@@ -4,6 +4,21 @@ const Io = std.Io;
 const xmpp = @import("xmpp");
 const st = xmpp.strophe;
 
+// define a handler for connection events
+fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: c_int, stream_error: ?*st.xmpp_stream_error_t, userdata: ?*anyopaque) callconv(.c) void {
+    const ctx: *st.xmpp_ctx_t = @ptrCast(@alignCast(userdata));
+    _ = error_no;
+    _ = stream_error;
+
+    if (status == st.XMPP_CONN_CONNECT) {
+        std.debug.print("DEBUG: connected\n", .{});
+        st.xmpp_disconnect(conn);
+    } else {
+        std.debug.print("DEBUG: disconnected\n", .{});
+        st.xmpp_stop(ctx);
+    }
+}
+
 pub fn main(init: std.process.Init) !void {
     // This is appropriate for anything that lives as long as the process.
     const arena: std.mem.Allocator = init.arena.allocator();
@@ -14,29 +29,74 @@ pub fn main(init: std.process.Init) !void {
     // In order to do I/O operations need an `Io` instance.
     const io = init.io;
 
+    var jid: [:0]const u8 = undefined;
+    var passwd: [:0]const u8 = undefined;
+    var host: [:0]const u8 = undefined;
+    const port: c_int = 0;
+
     if (args.len > 1) {
         const command = args[1];
 
         if (std.mem.eql(u8, command, "connect") and (args.len > 3)) {
-            const jid = args[2];
-            const passwd = args[3];
+            jid = args[2];
+            passwd = args[3];
             std.debug.print("connect {s} {s}\n", .{ jid, passwd });
             if (args.len > 4) {
-                const host = args[4];
+                host = args[4];
                 std.debug.print("host {s}\n", .{host});
             }
             if (args.len > 5) {
-                const port = args[5];
-                std.debug.print("port {s}\n", .{port});
+                //                port = args[5];
+                std.debug.print("port {d}\n", .{port});
             }
+        } else {
+            printUsage(io, args[0]) catch {};
             return;
         }
+    } else {
+        printUsage(io, args[0]) catch {};
+        return;
     }
 
-    printUsage(io, args[0]) catch {};
+    var ctx: ?*st.xmpp_ctx_t = undefined;
+    var conn: ?*st.xmpp_conn_t = undefined;
+    var log: *st.xmpp_log_t = undefined;
+    var flags: c_int = 0;
+
+    // disable TLS for now
+    flags = st.XMPP_CONN_FLAG_DISABLE_TLS;
 
     // init library
     st.xmpp_initialize();
+
+    // pass NULL instead to silence output
+    log = st.xmpp_get_default_logger(st.XMPP_LEVEL_DEBUG);
+    // create a context
+    ctx = st.xmpp_ctx_new(null, log);
+
+    // create a connection
+    conn = st.xmpp_conn_new(ctx);
+
+    // configure connection properties (optional)
+    _ = st.xmpp_conn_set_flags(conn, flags);
+
+    // setup authentication information
+    st.xmpp_conn_set_jid(conn, jid);
+    st.xmpp_conn_set_pass(conn, passwd);
+
+    // initiate connection
+    if (st.xmpp_connect_client(conn, host, port, &conn_handler, ctx) == st.XMPP_EOK) {
+
+        // enter the event loop -
+        // our connect handler will trigger an exit
+        st.xmpp_run(ctx);
+    } else {
+        std.debug.print("DEBUG: Error on connect", .{});
+    }
+
+    // release our connection and context
+    _ = st.xmpp_conn_release(conn);
+    st.xmpp_ctx_free(ctx);
 
     // final shutdown of the library
     st.xmpp_shutdown();
