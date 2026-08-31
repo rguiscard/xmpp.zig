@@ -2,19 +2,22 @@ const std = @import("std");
 const Io = std.Io;
 
 const xmpp = @import("xmpp");
-const st = xmpp.strophe;
+const st = xmpp.st;
+const zz = xmpp.zz;
+const ui = xmpp.ui;
 
 // define a handler for connection events
 fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: c_int, stream_error: ?*st.xmpp_stream_error_t, userdata: ?*anyopaque) callconv(.c) void {
     const ctx: *st.xmpp_ctx_t = @ptrCast(@alignCast(userdata));
+    _ = conn;
     _ = error_no;
     _ = stream_error;
 
     if (status == st.XMPP_CONN_CONNECT) {
-        std.debug.print("DEBUG: connected\n", .{});
-        st.xmpp_disconnect(conn);
+        //        std.debug.print("DEBUG: connected\n", .{});
+        //        st.xmpp_disconnect(conn);
     } else {
-        std.debug.print("DEBUG: disconnected\n", .{});
+        //        std.debug.print("DEBUG: disconnected\n", .{});
         st.xmpp_stop(ctx);
     }
 }
@@ -40,14 +43,14 @@ pub fn main(init: std.process.Init) !void {
         if (std.mem.eql(u8, command, "connect") and (args.len > 3)) {
             jid = args[2];
             passwd = args[3];
-            std.debug.print("connect {s} {s}\n", .{ jid, passwd });
+            //            std.debug.print("connect {s} {s}\n", .{ jid, passwd });
             if (args.len > 4) {
                 host = args[4];
-                std.debug.print("host {s}\n", .{host});
+                //                std.debug.print("host {s}\n", .{host});
             }
             if (args.len > 5) {
                 //                port = args[5];
-                std.debug.print("port {d}\n", .{port});
+                //                std.debug.print("port {d}\n", .{port});
             }
         } else {
             printUsage(io, args[0]) catch {};
@@ -70,7 +73,8 @@ pub fn main(init: std.process.Init) !void {
     st.xmpp_initialize();
 
     // pass NULL instead to silence output
-    log = st.xmpp_get_default_logger(st.XMPP_LEVEL_DEBUG);
+    log = st.xmpp_get_default_logger(st.XMPP_LEVEL_ERROR);
+    //    log = st.xmpp_get_default_logger(st.XMPP_LEVEL_DEBUG);
     // create a context
     ctx = st.xmpp_ctx_new(null, log);
 
@@ -86,12 +90,27 @@ pub fn main(init: std.process.Init) !void {
 
     // initiate connection
     if (st.xmpp_connect_client(conn, host, port, &conn_handler, ctx) == st.XMPP_EOK) {
+        if (ctx) |c| {
+            const context: *st.ctx_t = @ptrCast(@alignCast(c));
+            if (context.loop_status == st.XMPP_LOOP_NOTSTARTED) {
+                context.loop_status = st.XMPP_LOOP_RUNNING;
 
-        // enter the event loop -
-        // our connect handler will trigger an exit
-        st.xmpp_run(ctx);
+                //                var program = zz.Program(ui).init(init.gpa, io, init.environ_map);
+                var program = zz.Program(ui).init(arena, io, init.environ_map);
+                defer program.deinit();
+
+                try program.start();
+
+                while (program.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
+                    try program.tick();
+                    st.xmpp_run_once(ctx, context.timeout);
+                    //                    std.debug.print("tick\n", .{});
+                }
+                context.loop_status = st.XMPP_LOOP_NOTSTARTED;
+            }
+        }
     } else {
-        std.debug.print("DEBUG: Error on connect", .{});
+        //        std.debug.print("DEBUG: Error on connect", .{});
     }
 
     // release our connection and context
