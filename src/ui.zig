@@ -1,7 +1,9 @@
 const std = @import("std");
+const st = @import("strophe");
 const zz = @import("zigzag");
 
 selected_panel: u8,
+conn: ?*st.xmpp_conn_t,
 
 const Self = @This();
 
@@ -10,15 +12,24 @@ pub const Msg = union(enum) {
 };
 
 pub fn init(self: *Self, _: *zz.Context) zz.Cmd(Msg) {
-    self.* = .{ .selected_panel = 0 };
+    //    self.* = .{ .selected_panel = 0 };
+    self.selected_panel = 0;
     return .none;
+}
+
+pub fn getLabel(self: *Self) void {
+    return self.label;
 }
 
 pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
     switch (msg) {
         .key => |k| switch (k.key) {
             .char => |c| switch (c) {
-                'q' => return .quit,
+                'q' => {
+                    st.xmpp_disconnect(self.conn);
+                    //                    return .quit;
+                    return .none;
+                },
                 '1' => self.selected_panel = 0,
                 '2' => self.selected_panel = 1,
                 '3' => self.selected_panel = 2,

@@ -6,6 +6,8 @@ const st = xmpp.st;
 const zz = xmpp.zz;
 const ui = xmpp.ui;
 
+var zProgram: ?*zz.Program(ui) = null;
+
 // define a handler for connection events
 fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: c_int, stream_error: ?*st.xmpp_stream_error_t, userdata: ?*anyopaque) callconv(.c) void {
     const ctx: *st.xmpp_ctx_t = @ptrCast(@alignCast(userdata));
@@ -16,9 +18,18 @@ fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: 
     if (status == st.XMPP_CONN_CONNECT) {
         //        std.debug.print("DEBUG: connected\n", .{});
         //        st.xmpp_disconnect(conn);
-    } else {
-        //        std.debug.print("DEBUG: disconnected\n", .{});
+    } else if (status == st.XMPP_CONN_RAW_CONNECT) {
+        std.debug.print("DEBUG: raw connected\n", .{});
+    } else if (status == st.XMPP_CONN_DISCONNECT) {
+        std.debug.print("DEBUG: disconnected\n", .{});
         st.xmpp_stop(ctx);
+        if (zProgram) |program| {
+            program.quit();
+        }
+    } else if (status == st.XMPP_CONN_FAIL) {
+        std.debug.print("DEBUG: failed\n", .{});
+    } else {
+        std.debug.print("DEBUG: unknown connection\n", .{});
     }
 }
 
@@ -97,9 +108,11 @@ pub fn main(init: std.process.Init) !void {
 
                 //                var program = zz.Program(ui).init(init.gpa, io, init.environ_map);
                 var program = zz.Program(ui).init(arena, io, init.environ_map);
+                zProgram = &program;
                 defer program.deinit();
 
                 try program.start();
+                program.model.conn = conn;
 
                 while (program.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
                     try program.tick();
