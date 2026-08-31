@@ -6,24 +6,83 @@ const st = xmpp.st;
 const zz = xmpp.zz;
 const ui = xmpp.ui;
 
-var zProgram: ?*zz.Program(ui) = null;
+const Client = struct {
+    conn: ?*st.xmpp_conn_t,
+    ctx: ?*st.xmpp_ctx_t,
+    program: ?*zz.Program(ui),
+};
+
+const Roster = struct {
+    const NS = "jabber:iq:roster";
+
+    pub fn register(client: *Client) void {
+        st.xmpp_handler_add(client.conn, handle_push, NS, "iq", "set", client);
+    }
+
+    pub fn request(client: *Client) !void {
+        const ctx = client.ctx;
+        const conn = client.conn;
+
+        const query = st.xmpp_stanza_new(ctx);
+        defer _ = st.xmpp_stanza_release(query);
+        _ = st.xmpp_stanza_set_name(query, "query");
+        _ = st.xmpp_stanza_set_ns(query, NS);
+
+        const iq = st.xmpp_iq_new(ctx, "get", "roster_id");
+        defer _ = st.xmpp_stanza_release(iq);
+        _ = st.xmpp_stanza_add_child(iq, query);
+        st.xmpp_id_handler_add(conn, handle_reply, "roster_id", client);
+        st.xmpp_send(conn, iq);
+    }
+
+    fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
+        const client: *Client = @ptrCast(@alignCast(userdata));
+        _ = client;
+        _ = conn;
+        var text: [*c]u8 = null;
+        var text_len: usize = 0;
+
+        const rc = st.xmpp_stanza_to_text(stanza, &text, &text_len);
+        if (rc != 0) {
+            std.debug.print("xmpp_stanza_to_text failed\n", .{});
+            return 0;
+        }
+        if (text) |t| {
+            std.debug.print("stanza: {s}\n", .{t[0..text_len]});
+            st.xmpp_free(st.xmpp_stanza_get_context(stanza), text);
+        }
+        return 0;
+    }
+
+    fn handle_push(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
+        _ = conn;
+        _ = stanza;
+        _ = userdata;
+        return 1;
+    }
+};
+
+const modules = .{
+    Roster,
+};
+
 
 // define a handler for connection events
 fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: c_int, stream_error: ?*st.xmpp_stream_error_t, userdata: ?*anyopaque) callconv(.c) void {
-    const ctx: *st.xmpp_ctx_t = @ptrCast(@alignCast(userdata));
+    const client: *Client = @ptrCast(@alignCast(userdata));
+    const ctx = client.ctx;
     _ = conn;
     _ = error_no;
     _ = stream_error;
 
     if (status == st.XMPP_CONN_CONNECT) {
-        //        std.debug.print("DEBUG: connected\n", .{});
-        //        st.xmpp_disconnect(conn);
+        try Roster.request(client);
     } else if (status == st.XMPP_CONN_RAW_CONNECT) {
         std.debug.print("DEBUG: raw connected\n", .{});
     } else if (status == st.XMPP_CONN_DISCONNECT) {
         std.debug.print("DEBUG: disconnected\n", .{});
         st.xmpp_stop(ctx);
-        if (zProgram) |program| {
+        if (client.program) |program| {
             program.quit();
         }
     } else if (status == st.XMPP_CONN_FAIL) {
@@ -92,46 +151,54 @@ pub fn main(init: std.process.Init) !void {
     // create a connection
     conn = st.xmpp_conn_new(ctx);
 
-    // configure connection properties (optional)
-    _ = st.xmpp_conn_set_flags(conn, flags);
+    // register modules
+    if (conn) |_| {
+        // configure connection properties (optional)
+        _ = st.xmpp_conn_set_flags(conn, flags);
 
-    // setup authentication information
-    st.xmpp_conn_set_jid(conn, jid);
-    st.xmpp_conn_set_pass(conn, passwd);
+        //                var program = zz.Program(ui).init(init.gpa, io, init.environ_map);
+        var program = zz.Program(ui).init(arena, io, init.environ_map);
+        defer program.deinit();
 
-    // initiate connection
-    if (st.xmpp_connect_client(conn, host, port, &conn_handler, ctx) == st.XMPP_EOK) {
-        if (ctx) |c| {
-            const context: *st.ctx_t = @ptrCast(@alignCast(c));
-            if (context.loop_status == st.XMPP_LOOP_NOTSTARTED) {
-                context.loop_status = st.XMPP_LOOP_RUNNING;
+        var client:Client = .{.conn = conn, .ctx = ctx, .program = &program};
 
-                //                var program = zz.Program(ui).init(init.gpa, io, init.environ_map);
-                var program = zz.Program(ui).init(arena, io, init.environ_map);
-                zProgram = &program;
-                defer program.deinit();
-
-                try program.start();
-                program.model.conn = conn;
-
-                while (program.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
-                    try program.tick();
-                    st.xmpp_run_once(ctx, context.timeout);
-                    //                    std.debug.print("tick\n", .{});
-                }
-                context.loop_status = st.XMPP_LOOP_NOTSTARTED;
-            }
+        inline for (modules) |m| {
+            m.register(&client);
         }
-    } else {
-        //        std.debug.print("DEBUG: Error on connect", .{});
+
+        // setup authentication information
+        st.xmpp_conn_set_jid(conn, jid);
+        st.xmpp_conn_set_pass(conn, passwd);
+
+        // initiate connection
+        if (st.xmpp_connect_client(conn, host, port, &conn_handler, &client) == st.XMPP_EOK) {
+            if (ctx) |c| {
+                const context: *st.ctx_t = @ptrCast(@alignCast(c));
+                if (context.loop_status == st.XMPP_LOOP_NOTSTARTED) {
+                    context.loop_status = st.XMPP_LOOP_RUNNING;
+
+                    try program.start();
+                    program.model.conn = conn;
+
+                    while (program.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
+                        try program.tick();
+                        st.xmpp_run_once(ctx, context.timeout);
+                        //                    std.debug.print("tick\n", .{});
+                    }
+                    context.loop_status = st.XMPP_LOOP_NOTSTARTED;
+                }
+            }
+        } else {
+            //        std.debug.print("DEBUG: Error on connect", .{});
+        }
+
+        // release our connection and context
+        _ = st.xmpp_conn_release(conn);
+        st.xmpp_ctx_free(ctx);
+
+        // final shutdown of the library
+        st.xmpp_shutdown();
     }
-
-    // release our connection and context
-    _ = st.xmpp_conn_release(conn);
-    st.xmpp_ctx_free(ctx);
-
-    // final shutdown of the library
-    st.xmpp_shutdown();
 }
 
 fn printUsage(io: std.Io, prog_name: []const u8) !void {
