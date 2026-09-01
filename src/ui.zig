@@ -1,6 +1,7 @@
 const std = @import("std");
 const st = @import("strophe");
 const zz = @import("zigzag");
+const Buddy = @import("client.zig").Buddy;
 
 selected_panel: u8,
 conn: ?*st.xmpp_conn_t,
@@ -10,11 +11,6 @@ input_mode: bool,
 input: zz.TextInput,
 
 const Self = @This();
-
-const Buddy = struct {
-    jid: []const u8,
-    presense: bool,
-};
 
 pub const Msg = union(enum) {
     key: zz.KeyEvent,
@@ -27,7 +23,7 @@ pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
     self.list.multi_select = false;
     self.list.height = 10;
     const Item = zz.List(Buddy).Item;
-    try self.list.addItem(Item.init(.{ .jid = "dummy@localhost", .presense = false }, "Dummy"));
+    try self.list.addItem(Item.init(.{ .name = null, .jid = "dummy@localhost", .presense = false }, "Dummy"));
 
     self.input_mode = false;
     self.input = zz.TextInput.init(ctx.persistent_allocator);
@@ -39,6 +35,15 @@ pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
 pub fn deinit(self: *Self) void {
     self.list.deinit();
     self.input.deinit();
+}
+
+pub fn setBuddies(self: *Self, buddies: std.ArrayList(Buddy)) !void {
+    //    std.debug.print("buddies {d}\n", .{buddies.items.len});
+    self.list.clear();
+    const Item = zz.List(Buddy).Item;
+    for (buddies.items) |buddy| {
+        try self.list.addItem(Item.init(buddy, buddy.jid));
+    }
 }
 
 pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {

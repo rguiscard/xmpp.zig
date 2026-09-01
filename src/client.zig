@@ -8,18 +8,29 @@ const modules = .{
     Roster,
 };
 
+pub const Buddy = struct {
+    name: ?[]const u8,
+    jid: []const u8,
+    presense: bool,
+};
+
+allocator: std.mem.Allocator,
 conn: ?*st.xmpp_conn_t,
 ctx: ?*st.xmpp_ctx_t,
 program: ?*zz.Program(ui),
+buddies: std.ArrayList(Buddy) = .empty,
 
 const Self = @This();
 
 pub fn init(
+    allocator: std.mem.Allocator,
     conn: ?*st.xmpp_conn_t,
     ctx: ?*st.xmpp_ctx_t,
     program: *zz.Program(ui),
 ) !Self {
-    var client: Self = .{ .conn = conn, .ctx = ctx, .program = program };
+    var client: Self = .{ .allocator = allocator, .conn = conn, .ctx = ctx, .program = program };
+
+    client.buddies = try std.ArrayList(Buddy).initCapacity(allocator, 10);
 
     inline for (modules) |m| {
         m.register(&client);
@@ -44,4 +55,7 @@ pub fn print(self: *Self, stanza: ?*st.xmpp_stanza_t) void {
         st.xmpp_free(ctx, text);
     }
 }
-pub fn deinit(_: *Self) void {}
+
+pub fn deinit(self: *Self) void {
+    self.buddies.deinit(self.allocator);
+}
