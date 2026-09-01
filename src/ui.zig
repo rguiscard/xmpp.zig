@@ -13,7 +13,7 @@ const Self = @This();
 
 const Buddy = struct {
     jid: []const u8,
-    presense: []const u8,
+    presense: bool,
 };
 
 pub const Msg = union(enum) {
@@ -27,7 +27,7 @@ pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
     self.list.multi_select = false;
     self.list.height = 10;
     const Item = zz.List(Buddy).Item;
-    try self.list.addItem(Item.init(.{ .jid = "dummy@localhost", .presense = "offline" }, "Dummy"));
+    try self.list.addItem(Item.init(.{ .jid = "dummy@localhost", .presense = false }, "Dummy"));
 
     self.input_mode = false;
     self.input = zz.TextInput.init(ctx.persistent_allocator);
@@ -121,12 +121,56 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     // Header
     const header = renderPanel(alloc, "Dashboard", rows[0].width, rows[0].height, zz.Color.cyan, true);
 
-    // Sidebar
-    const sidebar_items =
-        "  [1] Overview\n" ++
-        "  [2] Metrics\n" ++
-        "  [3] Settings";
-    const sidebar = renderPanel(alloc, sidebar_items, cols[0].width, cols[0].height, zz.Color.magenta, self.selected_panel == 0);
+    // Buddies
+    var list_content: std.Io.Writer.Allocating = .init(ctx.allocator);
+    const writer = &list_content.writer;
+
+    // Show filter if enabled
+    if (self.list.filter_enabled) {
+        //            var filter_style = zz.Style{};
+        //            filter_style = filter_style.fg(zz.Color.yellow);
+        //            filter_style = filter_style.inline_style(true);
+        //            const filter_text = try std.fmt.allocPrint(ctx.allocator, "Filter: {s}", .{self.list.filter_text.items});
+        //            const styled_filter = try filter_style.render(ctx.allocator, filter_text);
+        //            try writer.writeAll(styled_filter);
+        //            try writer.writeByte('\n');
+    }
+
+    const visible = self.list.filtered_indices.items;
+
+    for (visible, 0..) |item_idx, i| {
+        if (i > 0) try writer.writeByte('\n');
+
+        const item = self.list.items.items[item_idx];
+
+        // Cursor indicator
+        if (i == self.list.cursor) {
+            try writer.writeAll("> ");
+        } else {
+            try writer.writeAll("  ");
+        }
+
+        // Checkbox
+        if (item.value.presense) {
+            try writer.writeAll("[v] ");
+        } else {
+            try writer.writeAll("[ ] ");
+        }
+
+        if (i == self.list.cursor) {
+            var selected_style = zz.Style{};
+            selected_style = selected_style.bold(true);
+            selected_style = selected_style.fg(zz.Color.magenta);
+            selected_style = selected_style.inline_style(true);
+            const styled = try selected_style.render(ctx.allocator, item.title);
+            try writer.writeAll(styled);
+        } else {
+            try writer.writeAll(item.title);
+        }
+    }
+
+    const list_view = try list_content.toOwnedSlice();
+    const sidebar = renderPanel(alloc, list_view, cols[0].width, cols[0].height, zz.Color.magenta, self.selected_panel == 0);
 
     // Main content area
     const main_text = switch (self.selected_panel) {
