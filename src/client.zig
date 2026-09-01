@@ -28,4 +28,20 @@ pub fn init(
     return client;
 }
 
+pub fn print(self: *Self, stanza: ?*st.xmpp_stanza_t) void {
+    const ctx = self.ctx;
+    var text: [*c]u8 = null;
+    var text_len: usize = 0;
+
+    const rc = st.xmpp_stanza_to_text(stanza, &text, &text_len);
+    if (rc != 0) {
+        std.debug.print("xmpp_stanza_to_text failed\n", .{});
+        return;
+    }
+    if (text) |t| {
+        std.debug.print("stanza: {s}\n", .{t[0..text_len]});
+        //        st.xmpp_free(st.xmpp_stanza_get_context(stanza), text);
+        st.xmpp_free(ctx, text);
+    }
+}
 pub fn deinit(_: *Self) void {}
