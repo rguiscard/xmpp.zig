@@ -5,67 +5,8 @@ const xmpp = @import("xmpp");
 const st = xmpp.st;
 const zz = xmpp.zz;
 const ui = xmpp.ui;
-
-const Client = struct {
-    conn: ?*st.xmpp_conn_t,
-    ctx: ?*st.xmpp_ctx_t,
-    program: ?*zz.Program(ui),
-};
-
-const Roster = struct {
-    const NS = "jabber:iq:roster";
-
-    pub fn register(client: *Client) void {
-        st.xmpp_handler_add(client.conn, handle_push, NS, "iq", "set", client);
-    }
-
-    pub fn request(client: *Client) !void {
-        const ctx = client.ctx;
-        const conn = client.conn;
-
-        const query = st.xmpp_stanza_new(ctx);
-        defer _ = st.xmpp_stanza_release(query);
-        _ = st.xmpp_stanza_set_name(query, "query");
-        _ = st.xmpp_stanza_set_ns(query, NS);
-
-        const iq = st.xmpp_iq_new(ctx, "get", "roster_id");
-        defer _ = st.xmpp_stanza_release(iq);
-        _ = st.xmpp_stanza_add_child(iq, query);
-        st.xmpp_id_handler_add(conn, handle_reply, "roster_id", client);
-        st.xmpp_send(conn, iq);
-    }
-
-    fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
-        const client: *Client = @ptrCast(@alignCast(userdata));
-        _ = client;
-        _ = conn;
-        var text: [*c]u8 = null;
-        var text_len: usize = 0;
-
-        const rc = st.xmpp_stanza_to_text(stanza, &text, &text_len);
-        if (rc != 0) {
-            std.debug.print("xmpp_stanza_to_text failed\n", .{});
-            return 0;
-        }
-        if (text) |t| {
-            std.debug.print("stanza: {s}\n", .{t[0..text_len]});
-            st.xmpp_free(st.xmpp_stanza_get_context(stanza), text);
-        }
-        return 0;
-    }
-
-    fn handle_push(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
-        _ = conn;
-        _ = stanza;
-        _ = userdata;
-        return 1;
-    }
-};
-
-const modules = .{
-    Roster,
-};
-
+const Client = xmpp.Client;
+const Roster = xmpp.Roster;
 
 // define a handler for connection events
 fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: c_int, stream_error: ?*st.xmpp_stream_error_t, userdata: ?*anyopaque) callconv(.c) void {
@@ -156,15 +97,11 @@ pub fn main(init: std.process.Init) !void {
         // configure connection properties (optional)
         _ = st.xmpp_conn_set_flags(conn, flags);
 
-        //                var program = zz.Program(ui).init(init.gpa, io, init.environ_map);
+        // For some reaon, must be in main()
         var program = zz.Program(ui).init(arena, io, init.environ_map);
         defer program.deinit();
 
-        var client:Client = .{.conn = conn, .ctx = ctx, .program = &program};
-
-        inline for (modules) |m| {
-            m.register(&client);
-        }
+        var client = try Client.init(conn, ctx, &program);
 
         // setup authentication information
         st.xmpp_conn_set_jid(conn, jid);
@@ -177,13 +114,14 @@ pub fn main(init: std.process.Init) !void {
                 if (context.loop_status == st.XMPP_LOOP_NOTSTARTED) {
                     context.loop_status = st.XMPP_LOOP_RUNNING;
 
-                    try program.start();
-                    program.model.conn = conn;
+                    if (client.program) |prog| {
+                        try prog.start();
+                        prog.model.conn = conn;
 
-                    while (program.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
-                        try program.tick();
-                        st.xmpp_run_once(ctx, context.timeout);
-                        //                    std.debug.print("tick\n", .{});
+                        while (prog.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
+                            try prog.tick();
+                            st.xmpp_run_once(ctx, context.timeout);
+                        }
                     }
                     context.loop_status = st.XMPP_LOOP_NOTSTARTED;
                 }

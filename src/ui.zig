@@ -50,10 +50,11 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     const w: u16 = @intCast(@min(ctx.width, std.math.maxInt(u16)));
     const h: u16 = @intCast(@min(ctx.height, std.math.maxInt(u16)));
 
-    // Outer vertical layout: header(3) | body(fill) | footer(3)
+    // Outer vertical layout: header(3) | body(fill) | input(3) | footer(3)
     const rows = zz.flex.layout(alloc, w, h, &.{
         .{ .constraint = .{ .fixed = 3 } },
         .{ .constraint = .fill },
+        .{ .constraint = .{ .fixed = 3 } },
         .{ .constraint = .{ .fixed = 3 } },
     }, .{ .direction = .column }) catch return "layout error";
 
@@ -84,6 +85,9 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     };
     const main_panel = renderPanel(alloc, main_text, cols[1].width, cols[1].height, zz.Color.green, self.selected_panel == 1);
 
+    // Input
+    const input = renderPanel(alloc, "Input", rows[1].width, rows[1].height, zz.Color.cyan, true);
+
     // Footer
     var help_style = zz.Style{};
     help_style = help_style.fg(zz.Color.gray(12));
@@ -95,7 +99,7 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     const body = try zz.join.horizontal(alloc, .top, &.{ sidebar, main_panel });
 
     // Stack vertically
-    return zz.join.vertical(alloc, .left, &.{ header, body, footer });
+    return zz.join.vertical(alloc, .left, &.{ header, body, input, footer });
 }
 
 fn renderPanel(alloc: std.mem.Allocator, content: []const u8, w: u16, h: u16, border_color: zz.Color, highlight: bool) []const u8 {
