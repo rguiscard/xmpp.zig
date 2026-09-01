@@ -118,6 +118,7 @@ pub fn main(init: std.process.Init) !void {
                         try prog.start();
                         prog.model.conn = conn;
 
+                        context.timeout = 100;
                         while (prog.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
                             try prog.tick();
                             st.xmpp_run_once(ctx, context.timeout);

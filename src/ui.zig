@@ -5,41 +5,93 @@ const zz = @import("zigzag");
 selected_panel: u8,
 conn: ?*st.xmpp_conn_t,
 
+list: zz.List(Buddy),
+input_mode: bool,
+input: zz.TextInput,
+
 const Self = @This();
+
+const Buddy = struct {
+    jid: []const u8,
+    presense: []const u8,
+};
 
 pub const Msg = union(enum) {
     key: zz.KeyEvent,
 };
 
-pub fn init(self: *Self, _: *zz.Context) zz.Cmd(Msg) {
-    //    self.* = .{ .selected_panel = 0 };
+pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
     self.selected_panel = 0;
+
+    self.list = zz.List(Buddy).init(ctx.persistent_allocator);
+    self.list.multi_select = false;
+    self.list.height = 10;
+    const Item = zz.List(Buddy).Item;
+    try self.list.addItem(Item.init(.{ .jid = "dummy@localhost", .presense = "offline" }, "Dummy"));
+
+    self.input_mode = false;
+    self.input = zz.TextInput.init(ctx.persistent_allocator);
+    self.input.setPlaceholder("Enter new todo...");
+    self.input.setPrompt("> ");
     return .none;
 }
 
-pub fn getLabel(self: *Self) void {
-    return self.label;
+pub fn deinit(self: *Self) void {
+    self.list.deinit();
+    self.input.deinit();
 }
 
 pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
     switch (msg) {
-        .key => |k| switch (k.key) {
-            .char => |c| switch (c) {
-                'q' => {
-                    st.xmpp_disconnect(self.conn);
-                    //                    return .quit;
-                    return .none;
-                },
-                '1' => self.selected_panel = 0,
-                '2' => self.selected_panel = 1,
-                '3' => self.selected_panel = 2,
-                else => {},
-            },
-            .tab => {
-                self.selected_panel = (self.selected_panel + 1) % 3;
-            },
-            .escape => return .quit,
-            else => {},
+        .key => |k| {
+            if (self.input_mode) {
+                switch (k.key) {
+                    .escape => {
+                        self.input_mode = false;
+                        self.input.setValue("") catch {};
+                    },
+                    .enter => {
+                        if (self.input.getValue().len > 0) {
+                            //                                const new_id: u32 = @intCast(self.list.items.items.len + 1);
+                            //                               const title = ctx.persistent_allocator.dupe(u8, self.input.getValue()) catch return .none;
+                            //                              const Item = zz.List(Todo).Item;
+                            //                             self.list.addItem(Item.init(.{ .id = new_id, .done = false }, title)) catch {
+                            //                                ctx.persistent_allocator.free(title);
+                            //                               return .none;
+                            //                          };
+                            //                         self.owned_titles.append(title) catch {
+                            //                            _ = self.list.items.pop();
+                            //                           self.list.updateFilter() catch {};
+                            //                          ctx.persistent_allocator.free(title);
+                            //                         return .none;
+                            //                    };
+                            //                   self.input.setValue("") catch {};
+                        }
+                        self.input_mode = false;
+                    },
+                    else => self.input.handleKey(k),
+                }
+            } else {
+                switch (k.key) {
+                    .char => |c| switch (c) {
+                        'q' => {
+                            st.xmpp_disconnect(self.conn);
+                            //                    return .quit;
+                            return .none;
+                        },
+                        '/' => self.input_mode = true,
+                        '1' => self.selected_panel = 0,
+                        '2' => self.selected_panel = 1,
+                        '3' => self.selected_panel = 2,
+                        else => {},
+                    },
+                    .tab => {
+                        self.selected_panel = (self.selected_panel + 1) % 3;
+                    },
+                    .escape => return .quit,
+                    else => {},
+                }
+            }
         },
     }
     return .none;
@@ -86,7 +138,11 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     const main_panel = renderPanel(alloc, main_text, cols[1].width, cols[1].height, zz.Color.green, self.selected_panel == 1);
 
     // Input
-    const input = renderPanel(alloc, "Input", rows[1].width, rows[1].height, zz.Color.cyan, true);
+    const input_line = if (self.input_mode)
+        try self.input.view(ctx.allocator)
+    else
+        "";
+    const input = renderPanel(alloc, input_line, rows[1].width, rows[1].height, zz.Color.cyan, true);
 
     // Footer
     var help_style = zz.Style{};
