@@ -7,6 +7,7 @@ const zz = xmpp.zz;
 const ui = xmpp.ui;
 const Client = xmpp.Client;
 const Roster = xmpp.Roster;
+const Presence = xmpp.Presence;
 
 // define a handler for connection events
 fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: c_int, stream_error: ?*st.xmpp_stream_error_t, userdata: ?*anyopaque) callconv(.c) void {
@@ -18,6 +19,7 @@ fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: 
 
     if (status == st.XMPP_CONN_CONNECT) {
         try Roster.request(client);
+        try Presence.sendAvailable(client, null, null);
     } else if (status == st.XMPP_CONN_RAW_CONNECT) {
         std.debug.print("DEBUG: raw connected\n", .{});
     } else if (status == st.XMPP_CONN_DISCONNECT) {

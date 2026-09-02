@@ -7,6 +7,7 @@ pub const zz = @import("zigzag");
 pub const ui = @import("ui.zig");
 pub const Client = @import("client.zig");
 pub const Roster = @import("roster.zig");
+pub const Presence = @import("presence.zig");
 
 /// This is a documentation comment to explain the `printAnotherMessage` function below.
 ///

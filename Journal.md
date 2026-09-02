@@ -28,3 +28,9 @@ $> profanity
 
 /connect alice@localhost server ip_to_server tls disable
 ```
+
+## libstrophe
+
+### Memory Management
+
+It uses reference count, thus, can free child node after it is added into parent node.
