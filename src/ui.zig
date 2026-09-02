@@ -224,7 +224,8 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     help_style = help_style.fg(zz.Color.gray(12));
     help_style = help_style.inline_style(true);
     const footer_text = try help_style.render(alloc, "Tab: cycle panels  1/2/3: select panel  q: quit");
-    const footer = renderPanel(alloc, footer_text, rows[2].width, rows[2].height, zz.Color.gray(8), false);
+    // const footer = renderPanel(alloc, footer_text, rows[2].width, rows[2].height, zz.Color.gray(8), false);
+    const footer = renderPanel(alloc, footer_text, rows[2].width, rows[2].height, null, false);
 
     // Compose the body row: sidebar | main
     const body = try zz.join.horizontal(alloc, .top, &.{ sidebar, main_panel });
