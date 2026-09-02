@@ -3,9 +3,11 @@ pub const st = @import("strophe");
 pub const zz = @import("zigzag");
 pub const ui = @import("ui.zig");
 const Roster = @import("roster.zig");
+const Presence = @import("presence.zig");
 
 const modules = .{
     Roster,
+    Presence,
 };
 
 pub const Buddy = struct {
@@ -14,11 +16,20 @@ pub const Buddy = struct {
     presense: bool,
 };
 
+pub const Available = struct {
+    jid: []const u8,
+    show: ?[]const u8 = null,
+    status: ?[]const u8 = null,
+    priority: i32 = 0,
+};
+
 allocator: std.mem.Allocator,
 conn: ?*st.xmpp_conn_t,
 ctx: ?*st.xmpp_ctx_t,
 program: ?*zz.Program(ui),
 buddies: std.ArrayList(Buddy) = .empty,
+// presences may not sync with buddies, thus, in its own list
+presences: std.ArrayList(Available) = .empty,
 
 const Self = @This();
 

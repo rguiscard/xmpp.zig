@@ -64,8 +64,8 @@ fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*
 }
 
 fn handle_push(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
+    const client: *Client = @ptrCast(@alignCast(userdata));
+    client.print(stanza);
     _ = conn;
-    _ = stanza;
-    _ = userdata;
     return 1;
 }
