@@ -17,3 +17,18 @@ The client (and server) needs to decide how to implement it.
 
 This XMPP client is mainly for educational and experimental purpose.
 It will not implement all functsions of XMPP, but could be a good start to fork.
+
+## Planned Features
+
+XMPP tends to use [XEP](https://xmpp.org/extensions/) to define its features.
+Here are the planned features for this client.
+
+### Roster (buddies)
+
+### Presence
+
+### Messages
+
+### Group chat (Multi-user chat, MUC)
+
+### Pub/Sub

@@ -74,6 +74,11 @@ pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
                         }
                         self.input_mode = false;
                     },
+                    .tab => {
+                        // jump out of input_mode
+                        self.input_mode = false;
+                        self.selected_panel = (self.selected_panel + 1) % 3;
+                    },
                     else => self.input.handleKey(k),
                 }
             } else {
@@ -81,20 +86,45 @@ pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
                     .char => |c| switch (c) {
                         'q' => {
                             st.xmpp_disconnect(self.conn);
-                            //                    return .quit;
+                            // return .quit; // it will quit after disconnection is done
                             return .none;
                         },
-                        '/' => self.input_mode = true,
+                        '/' => {
+                            self.input_mode = true;
+                            self.selected_panel = 2;
+                        },
                         '1' => self.selected_panel = 0,
                         '2' => self.selected_panel = 1,
                         '3' => self.selected_panel = 2,
-                        else => {},
+                        else => {
+                            if (self.selected_panel == 0) {
+                                self.list.handleKey(k);
+                            }
+                        },
+                    },
+                    .enter => {
+                        if (self.selected_panel == 0) {
+                            // select message
+                        } else if (self.selected_panel == 2) {
+                            self.input_mode = true;
+                        }
                     },
                     .tab => {
                         self.selected_panel = (self.selected_panel + 1) % 3;
+                        if (self.selected_panel == 2) {
+                            self.input_mode = true;
+                        }
                     },
-                    .escape => return .quit,
-                    else => {},
+                    .escape => {
+                        st.xmpp_disconnect(self.conn);
+                        // return .quit; // it will quit after disconnection is done
+                        return .none;
+                    },
+                    else => {
+                        if (self.selected_panel == 0) {
+                            self.list.handleKey(k);
+                        }
+                    },
                 }
             }
         },
@@ -178,12 +208,7 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     const sidebar = renderPanel(alloc, list_view, cols[0].width, cols[0].height, zz.Color.magenta, self.selected_panel == 0);
 
     // Main content area
-    const main_text = switch (self.selected_panel) {
-        0 => "Welcome to the ZigZag dashboard.\n\nThis layout is built with the\nflexbox constraint engine.\n\nPress 1/2/3 or Tab to navigate.",
-        1 => "CPU: 42%\nMemory: 1.2 GB / 8 GB\nDisk: 120 GB / 500 GB\nUptime: 3d 14h 22m",
-        2 => "Theme: Dark\nRefresh: 5s\nNotifications: On",
-        else => "",
-    };
+    const main_text = "message";
     const main_panel = renderPanel(alloc, main_text, cols[1].width, cols[1].height, zz.Color.green, self.selected_panel == 1);
 
     // Input
@@ -191,7 +216,7 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
         try self.input.view(ctx.allocator)
     else
         "";
-    const input = renderPanel(alloc, input_line, rows[1].width, rows[1].height, zz.Color.cyan, true);
+    const input = renderPanel(alloc, input_line, rows[1].width, rows[1].height, zz.Color.cyan, self.selected_panel == 2);
 
     // Footer
     var help_style = zz.Style{};
