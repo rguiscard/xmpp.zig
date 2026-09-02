@@ -145,16 +145,17 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
         .{ .constraint = .{ .fixed = 3 } },
     }, .{ .direction = .column }) catch return "layout error";
 
-    // Body horizontal layout: sidebar(20%) | main(fill)
+    // Body horizontal layout: sidebar(30%) | main(fill)
     const cols = zz.flex.layout(alloc, rows[1].width, rows[1].height, &.{
-        .{ .constraint = .{ .percentage = 20 } },
+        .{ .constraint = .{ .percentage = 30 } },
         .{ .constraint = .fill },
     }, .{ .direction = .row, .gap = 1 }) catch return "layout error";
 
     // -- Render each panel into styled boxes --
 
     // Header
-    const header = renderPanel(alloc, "Dashboard", rows[0].width, rows[0].height, zz.Color.cyan, true);
+    //const header = renderPanel(alloc, "XMPP", rows[0].width, rows[0].height, zz.Color.cyan, true);
+    const header = renderPanel(alloc, "XMPP", rows[0].width, rows[0].height, null, true);
 
     // Buddies
     var list_content: std.Io.Writer.Allocating = .init(ctx.allocator);
@@ -232,17 +233,21 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     return zz.join.vertical(alloc, .left, &.{ header, body, input, footer });
 }
 
-fn renderPanel(alloc: std.mem.Allocator, content: []const u8, w: u16, h: u16, border_color: zz.Color, highlight: bool) []const u8 {
+fn renderPanel(alloc: std.mem.Allocator, content: []const u8, w: u16, h: u16, border_color: ?zz.Color, highlight: bool) []const u8 {
     var s = zz.Style{};
-    s = s.borderAll(zz.Border.rounded);
-    if (highlight) {
-        s = s.borderForeground(border_color);
-    } else {
-        s = s.borderForeground(zz.Color.gray(6));
+    var inner_w: u16 = w;
+    var inner_h: u16 = h;
+    if (border_color) |color| {
+        s = s.borderAll(zz.Border.rounded);
+        if (highlight) {
+            s = s.borderForeground(color);
+        } else {
+            s = s.borderForeground(zz.Color.gray(6));
+        }
+        // Account for border (2 cells each side)
+        inner_w = if (w > 4) w - 4 else 1;
+        inner_h = if (h > 2) h - 2 else 1;
     }
-    // Account for border (2 cells each side)
-    const inner_w: u16 = if (w > 4) w - 4 else 1;
-    const inner_h: u16 = if (h > 2) h - 2 else 1;
     s = s.width(inner_w);
     s = s.height(inner_h);
     return s.render(alloc, content) catch content;
