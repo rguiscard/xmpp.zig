@@ -27,7 +27,7 @@ pub fn sendAvailable(client: *Client, show: ?[:0]const u8, status: ?[:0]const u8
         util.stanzaSetChildByName(presence, "status", value);
     }
 
-    client.print(presence);
+    //    client.print(presence);
 
     st.xmpp_send(conn, presence);
 }

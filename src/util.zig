@@ -2,7 +2,7 @@ const std = @import("std");
 const st = @import("strophe");
 const Client = @import("client.zig");
 
-pub fn stanzaGetFrom(stanza: ?*st.xmpp_stanza_t) ?[]const u8 {
+pub fn stanzaGetFrom(stanza: ?*st.xmpp_stanza_t) ?[:0]const u8 {
     const cstr = st.xmpp_stanza_get_from(stanza);
 
     if (cstr != null) {
@@ -11,14 +11,14 @@ pub fn stanzaGetFrom(stanza: ?*st.xmpp_stanza_t) ?[]const u8 {
     return null;
 }
 
-pub fn stanzaGetFromAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t) !?[]const u8 {
+pub fn stanzaGetFromAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t) !?[:0]const u8 {
     if (stanzaGetFrom(stanza)) |stz| {
-        return try allocator.dupe(stz);
+        return try allocator.dupeZ(stz);
     }
     return null;
 }
 
-pub fn stanzaGetTo(stanza: ?*st.xmpp_stanza_t) ?[]const u8 {
+pub fn stanzaGetTo(stanza: ?*st.xmpp_stanza_t) ?[:0]const u8 {
     const cstr = st.xmpp_stanza_get_to(stanza);
 
     if (cstr != null) {
@@ -27,9 +27,9 @@ pub fn stanzaGetTo(stanza: ?*st.xmpp_stanza_t) ?[]const u8 {
     return null;
 }
 
-pub fn stanzaGetToAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t) !?[]const u8 {
+pub fn stanzaGetToAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t) !?[:0]const u8 {
     if (stanzaGetTo(stanza)) |stz| {
-        return try allocator.dupe(stz);
+        return try allocator.dupeZ(stz);
     }
     return null;
 }
@@ -49,7 +49,7 @@ pub fn stanzaSetChildByName(parent: ?*st.xmpp_stanza_t, name: [:0]const u8, valu
     _ = st.xmpp_stanza_add_child(parent, stanza);
 }
 
-pub fn stanzaGetChildByName(stanza: ?*st.xmpp_stanza_t, name: [:0]const u8) ?[]const u8 {
+pub fn stanzaGetChildByName(stanza: ?*st.xmpp_stanza_t, name: [:0]const u8) ?[:0]const u8 {
     const cstr = st.xmpp_stanza_get_child_by_name(stanza, name.ptr);
 
     if (cstr != null) {
@@ -61,9 +61,9 @@ pub fn stanzaGetChildByName(stanza: ?*st.xmpp_stanza_t, name: [:0]const u8) ?[]c
     return null;
 }
 
-pub fn stanzaGetChildByNameAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t, name: [:0]const u8) !?[]const u8 {
+pub fn stanzaGetChildByNameAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t, name: [:0]const u8) !?[:0]const u8 {
     if (stanzaGetChildByName(stanza, name)) |stz| {
-        return try allocator.dupe(stz);
+        return try allocator.dupeZ(stz);
     }
     return null;
 }

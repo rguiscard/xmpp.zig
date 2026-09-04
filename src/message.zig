@@ -10,24 +10,41 @@ pub fn register(client: *Client) void {
     st.xmpp_handler_add(client.conn, handle_message, null, "message", null, client);
 }
 
-pub fn request(client: *Client) !void {
-    _ = client;
+pub fn sendMessage(client: *Client, to: [:0]const u8, body: [:0]const u8) !void {
+    const ctx = client.ctx;
+    const conn = client.conn;
+
+    const id = st.xmpp_uuid_gen(ctx);
+    defer st.xmpp_free(ctx, id);
+
+    const msg = st.xmpp_message_new(ctx, "chat", to.ptr, id);
+    defer _ = st.xmpp_stanza_release(msg);
+
+    _ = st.xmpp_message_set_body(msg, body.ptr);
+    _ = st.xmpp_send(conn, msg);
+    if (client.program) |program| {
+        program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ "me", body }) catch {};
+    }
 }
 
 fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
-    _ = userdata;
-    //    const client: *Client = @ptrCast(@alignCast(userdata));
+    const client: *Client = @ptrCast(@alignCast(userdata));
     //    client.print(stanza);
     _ = conn;
 
     const from = util.stanzaGetFrom(stanza);
     const body = util.stanzaGetChildByName(stanza, "body");
-    const to = util.stanzaGetTo(stanza);
-    const message_type = parseMessageType(
-        st.xmpp_stanza_get_type(stanza),
-    );
+    //const to = util.stanzaGetTo(stanza);
+    //const message_type = parseMessageType(
+    //    st.xmpp_stanza_get_type(stanza),
+    //);
 
-    std.debug.print("Message {s} {s} {s} {any}\n", .{ from orelse "", to orelse "", body orelse "", message_type });
+    if (client.program) |program| {
+        if (from) |sender| {
+            program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ sender, body orelse "" }) catch {};
+            try sendMessage(client, sender, body orelse "hi hi");
+        }
+    }
 
     return 1;
 }

@@ -60,11 +60,15 @@ pub fn init(
 
     client.buddies = try std.ArrayList(Buddy).initCapacity(allocator, 10);
 
-    inline for (modules) |m| {
-        m.register(&client);
-    }
+    // client.register();
 
     return client;
+}
+
+pub fn register(self: *Self) void {
+    inline for (modules) |m| {
+        m.register(self);
+    }
 }
 
 pub fn print(self: *Self, stanza: ?*st.xmpp_stanza_t) void {

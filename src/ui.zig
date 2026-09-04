@@ -7,6 +7,7 @@ selected_panel: u8,
 conn: ?*st.xmpp_conn_t,
 
 list: zz.List(Buddy),
+log: zz.components.RichLog,
 input_mode: bool,
 input: zz.TextInput,
 
@@ -21,9 +22,12 @@ pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
 
     self.list = zz.List(Buddy).init(ctx.persistent_allocator);
     self.list.multi_select = false;
-    self.list.height = 10;
+    self.list.height = 50;
     const Item = zz.List(Buddy).Item;
     try self.list.addItem(Item.init(.{ .name = null, .jid = "dummy@localhost", .presense = false }, "Dummy"));
+
+    self.log = zz.components.RichLog.init(ctx.persistent_allocator, 500);
+    self.log.show_timestamps = true;
 
     self.input_mode = false;
     self.input = zz.TextInput.init(ctx.persistent_allocator);
@@ -99,6 +103,8 @@ pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
                         else => {
                             if (self.selected_panel == 0) {
                                 self.list.handleKey(k);
+                            } else if (self.selected_panel == 1) {
+                                self.log.handleKey(k) catch {};
                             }
                         },
                     },
@@ -123,6 +129,8 @@ pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
                     else => {
                         if (self.selected_panel == 0) {
                             self.list.handleKey(k);
+                        } else if (self.selected_panel == 1) {
+                            self.log.handleKey(k) catch {};
                         }
                     },
                 }
@@ -153,7 +161,7 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
 
     // -- Render each panel into styled boxes --
 
-    // Header
+    // Header, could add status here
     //const header = renderPanel(alloc, "XMPP", rows[0].width, rows[0].height, zz.Color.cyan, true);
     const header = renderPanel(alloc, "XMPP", rows[0].width, rows[0].height, null, true);
 
@@ -209,8 +217,9 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     const sidebar = renderPanel(alloc, list_view, cols[0].width, cols[0].height, zz.Color.magenta, self.selected_panel == 0);
 
     // Main content area
-    const main_text = "message";
-    const main_panel = renderPanel(alloc, main_text, cols[1].width, cols[1].height, zz.Color.green, self.selected_panel == 1);
+    var log_mut = @constCast(&self.log);
+    const log_view = try log_mut.view(alloc);
+    const main_panel = renderPanel(alloc, log_view, cols[1].width, cols[1].height, zz.Color.green, self.selected_panel == 1);
 
     // Input
     const input_line = if (self.input_mode)

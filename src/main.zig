@@ -18,6 +18,7 @@ fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: 
     _ = stream_error;
 
     if (status == st.XMPP_CONN_CONNECT) {
+        client.register(); // register later, otherwise, messagne_handler seems to have issue.
         try Roster.request(client);
         try Presence.sendAvailable(client, null, null);
     } else if (status == st.XMPP_CONN_RAW_CONNECT) {

@@ -25,9 +25,21 @@ Here are the planned features for this client.
 
 ### Roster (buddies)
 
+- list, add, remove buddies
+
 ### Presence
 
+- show and status
+
 ### Messages
+
+- send and receive
+- view past messages
+
+### PEP
+
+- send to node
+- entity capabilitity
 
 ### Group chat (Multi-user chat, MUC)
 
