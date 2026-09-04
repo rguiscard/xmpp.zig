@@ -33,8 +33,7 @@ pub fn sendAvailable(client: *Client, show: ?[:0]const u8, status: ?[:0]const u8
 }
 
 fn handle_presence(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
-    _ = userdata;
-    //const client: *Client = @ptrCast(@alignCast(userdata));
+    const client: *Client = @ptrCast(@alignCast(userdata));
     //client.print(stanza);
     _ = conn;
 
@@ -42,7 +41,7 @@ fn handle_presence(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata:
         const presence_type = st.xmpp_stanza_get_type(stz);
 
         if (presence_type == null) {
-            _ = handleAvailable(stz);
+            _ = handleAvailable(client.allocator, stz);
         } else {
             const presence = std.mem.span(presence_type);
             if (std.mem.eql(u8, presence, "subscribe")) {
@@ -61,14 +60,14 @@ fn handle_presence(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata:
     return 1;
 }
 
-fn handleAvailable(stanza: *st.xmpp_stanza_t) ?Available {
+fn handleAvailable(allocator: std.mem.Allocator, stanza: *st.xmpp_stanza_t) ?Available {
     const from = util.stanzaGetFrom(stanza);
     if (from) |jid| {
-        const priority_str = util.stanzaGetChildByName(stanza, "priority");
+        const priority_str = util.stanzaGetChildByNameAlloc(allocator, stanza, "priority") catch "0";
         const available: Available = .{
             .jid = jid,
-            .show = util.stanzaGetChildByName(stanza, "show"),
-            .status = util.stanzaGetChildByName(stanza, "status"),
+            .show = util.stanzaGetChildByNameAlloc(allocator, stanza, "show") catch null,
+            .status = util.stanzaGetChildByNameAlloc(allocator, stanza, "status") catch null,
             .priority = std.fmt.parseInt(i32, priority_str orelse "0", 10) catch 0,
         };
         //        std.debug.print("presence {s} ({s})\n", .{ available.jid, available.show orelse "" });

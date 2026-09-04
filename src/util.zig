@@ -51,22 +51,17 @@ pub fn stanzaSetChildByName(parent: ?*st.xmpp_stanza_t, name: [:0]const u8, valu
     _ = st.xmpp_stanza_add_child(parent, stanza);
 }
 
-// caller need to release stanza text
-pub fn stanzaGetChildByName(stanza: ?*st.xmpp_stanza_t, name: [:0]const u8) ?[:0]const u8 {
+// caller need to release return text
+pub fn stanzaGetChildByNameAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t, name: [:0]const u8) !?[:0]const u8 {
+    const ctx = st.xmpp_stanza_get_context(stanza);
     const cstr = st.xmpp_stanza_get_child_by_name(stanza, name.ptr);
 
     if (cstr != null) {
         const ctext = st.xmpp_stanza_get_text(cstr);
         if (ctext != null) {
-            return std.mem.span(ctext);
+            defer st.xmpp_free(ctx, ctext);
+            return try allocator.dupeZ(u8, std.mem.span(ctext));
         }
-    }
-    return null;
-}
-
-pub fn stanzaGetChildByNameAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t, name: [:0]const u8) !?[:0]const u8 {
-    if (stanzaGetChildByName(stanza, name)) |stz| {
-        return try allocator.dupeZ(stz);
     }
     return null;
 }
