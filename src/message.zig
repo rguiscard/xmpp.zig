@@ -33,6 +33,7 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
     _ = conn;
 
     const from = util.stanzaGetFrom(stanza);
+    //    const sender = std.mem.span(st.xmpp_jid_bare(self.client.ctx, buddy.jid.ptr));
     const body = util.stanzaGetChildByName(stanza, "body");
     //const to = util.stanzaGetTo(stanza);
     //const message_type = parseMessageType(
@@ -42,7 +43,6 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
     if (client.program) |program| {
         if (from) |sender| {
             program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ sender, body orelse "" }) catch {};
-            try sendMessage(client, sender, body orelse "hi hi");
         }
     }
 

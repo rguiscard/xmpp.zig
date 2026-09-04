@@ -119,7 +119,7 @@ pub fn main(init: std.process.Init) !void {
 
                     if (client.program) |prog| {
                         try prog.start();
-                        prog.model.conn = conn;
+                        prog.model.setXMPPClient(&client);
 
                         context.timeout = 100;
                         while (prog.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {

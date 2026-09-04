@@ -1,10 +1,13 @@
 const std = @import("std");
 const st = @import("strophe");
 const zz = @import("zigzag");
+const Client = @import("client.zig");
 const Buddy = @import("client.zig").Buddy;
+const Chat = @import("message.zig");
 
 selected_panel: u8,
-conn: ?*st.xmpp_conn_t,
+selected_jid: ?[:0]const u8, // bare one
+client: *Client,
 
 list: zz.List(Buddy),
 log: zz.components.RichLog,
@@ -41,6 +44,10 @@ pub fn deinit(self: *Self) void {
     self.input.deinit();
 }
 
+pub fn setXMPPClient(self: *Self, client: *Client) void {
+    self.client = client;
+}
+
 pub fn setBuddies(self: *Self, buddies: std.ArrayList(Buddy)) !void {
     //    std.debug.print("buddies {d}\n", .{buddies.items.len});
     self.list.clear();
@@ -50,7 +57,7 @@ pub fn setBuddies(self: *Self, buddies: std.ArrayList(Buddy)) !void {
     }
 }
 
-pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
+pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
     switch (msg) {
         .key => |k| {
             if (self.input_mode) {
@@ -61,20 +68,11 @@ pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
                     },
                     .enter => {
                         if (self.input.getValue().len > 0) {
-                            //                                const new_id: u32 = @intCast(self.list.items.items.len + 1);
-                            //                               const title = ctx.persistent_allocator.dupe(u8, self.input.getValue()) catch return .none;
-                            //                              const Item = zz.List(Todo).Item;
-                            //                             self.list.addItem(Item.init(.{ .id = new_id, .done = false }, title)) catch {
-                            //                                ctx.persistent_allocator.free(title);
-                            //                               return .none;
-                            //                          };
-                            //                         self.owned_titles.append(title) catch {
-                            //                            _ = self.list.items.pop();
-                            //                           self.list.updateFilter() catch {};
-                            //                          ctx.persistent_allocator.free(title);
-                            //                         return .none;
-                            //                    };
-                            //                   self.input.setValue("") catch {};
+                            const text = ctx.persistent_allocator.dupeZ(u8, self.input.getValue()) catch return .none;
+                            if (self.selected_jid) |jid| {
+                                Chat.sendMessage(self.client, jid, text) catch {};
+                            }
+                            self.input.setValue("") catch {};
                         }
                         self.input_mode = false;
                     },
@@ -89,7 +87,7 @@ pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
                 switch (k.key) {
                     .char => |c| switch (c) {
                         'q' => {
-                            st.xmpp_disconnect(self.conn);
+                            st.xmpp_disconnect(self.client.conn);
                             // return .quit; // it will quit after disconnection is done
                             return .none;
                         },
@@ -110,7 +108,18 @@ pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
                     },
                     .enter => {
                         if (self.selected_panel == 0) {
-                            // select message
+                            const visible = self.list.filtered_indices.items;
+                            if (self.list.cursor < visible.len) {
+                                const item_idx = visible[self.list.cursor];
+                                const buddy = self.list.items.items[item_idx].value;
+                                self.selected_jid = std.mem.span(st.xmpp_jid_bare(self.client.ctx, buddy.jid.ptr));
+                                // need to free selected_jid later ?
+                                if (self.selected_jid) |jid| {
+                                    if (std.fmt.allocPrintSentinel(ctx.persistent_allocator, "{s} > ", .{jid}, 0)) |prompt| {
+                                        self.input.setPrompt(prompt);
+                                    } else |_| {}
+                                }
+                            }
                         } else if (self.selected_panel == 2) {
                             self.input_mode = true;
                         }
@@ -122,7 +131,7 @@ pub fn update(self: *Self, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
                         }
                     },
                     .escape => {
-                        st.xmpp_disconnect(self.conn);
+                        st.xmpp_disconnect(self.client.conn);
                         // return .quit; // it will quit after disconnection is done
                         return .none;
                     },

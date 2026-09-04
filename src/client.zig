@@ -13,15 +13,15 @@ const modules = .{
 };
 
 pub const Buddy = struct {
-    name: ?[]const u8,
-    jid: []const u8,
+    name: ?[:0]const u8,
+    jid: [:0]const u8,
     presense: bool,
 };
 
 pub const Available = struct {
-    jid: []const u8,
-    show: ?[]const u8 = null,
-    status: ?[]const u8 = null,
+    jid: [:0]const u8,
+    show: ?[:0]const u8 = null,
+    status: ?[:0]const u8 = null,
     priority: i32 = 0,
 };
 
@@ -34,9 +34,9 @@ pub const MessageType = enum {
 };
 
 pub const Message = struct {
-    from: []const u8,
-    to: ?[]const u8,
-    body: []const u8,
+    from: [:0]const u8,
+    to: ?[:0]const u8,
+    body: [:0]const u8,
     message_type: MessageType,
 };
 

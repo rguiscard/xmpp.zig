@@ -44,10 +44,10 @@ fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*
             const name = st.xmpp_stanza_get_attribute(item, "name");
             const jid = st.xmpp_stanza_get_attribute(item, "jid");
             //            const subscription = st.xmpp_stanza_get_attribute(item, "subscription");
-            var buddy: Buddy = .{ .name = null, .jid = client.allocator.dupe(u8, std.mem.span(jid)) catch "", .presense = false };
+            var buddy: Buddy = .{ .name = null, .jid = client.allocator.dupeZ(u8, std.mem.span(jid)) catch "", .presense = false };
             //            std.debug.print("\t {s} sub={s}\n", .{ std.mem.span(jid), std.mem.span(subscription) });
             if (name) |n| {
-                buddy.name = client.allocator.dupe(u8, std.mem.span(n)) catch "";
+                buddy.name = client.allocator.dupeZ(u8, std.mem.span(n)) catch "";
             }
             client.buddies.append(client.allocator, buddy) catch {};
             item = st.xmpp_stanza_get_next(item);

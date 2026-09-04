@@ -2,6 +2,7 @@ const std = @import("std");
 const st = @import("strophe");
 const Client = @import("client.zig");
 
+// caller need to make copy to retain returned string
 pub fn stanzaGetFrom(stanza: ?*st.xmpp_stanza_t) ?[:0]const u8 {
     const cstr = st.xmpp_stanza_get_from(stanza);
 
@@ -18,6 +19,7 @@ pub fn stanzaGetFromAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza
     return null;
 }
 
+// caller need to make copy to retain returned string
 pub fn stanzaGetTo(stanza: ?*st.xmpp_stanza_t) ?[:0]const u8 {
     const cstr = st.xmpp_stanza_get_to(stanza);
 
@@ -49,6 +51,7 @@ pub fn stanzaSetChildByName(parent: ?*st.xmpp_stanza_t, name: [:0]const u8, valu
     _ = st.xmpp_stanza_add_child(parent, stanza);
 }
 
+// caller need to release stanza text
 pub fn stanzaGetChildByName(stanza: ?*st.xmpp_stanza_t, name: [:0]const u8) ?[:0]const u8 {
     const cstr = st.xmpp_stanza_get_child_by_name(stanza, name.ptr);
 
