@@ -14,7 +14,7 @@ pub fn stanzaGetFrom(stanza: ?*st.xmpp_stanza_t) ?[:0]const u8 {
 
 pub fn stanzaGetFromAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t) !?[:0]const u8 {
     if (stanzaGetFrom(stanza)) |stz| {
-        return try allocator.dupeZ(stz);
+        return try allocator.dupeZ(u8, stz);
     }
     return null;
 }
@@ -31,7 +31,7 @@ pub fn stanzaGetTo(stanza: ?*st.xmpp_stanza_t) ?[:0]const u8 {
 
 pub fn stanzaGetToAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t) !?[:0]const u8 {
     if (stanzaGetTo(stanza)) |stz| {
-        return try allocator.dupeZ(stz);
+        return try allocator.dupeZ(u8, stz);
     }
     return null;
 }

@@ -24,6 +24,15 @@ pub fn sendMessage(client: *Client, to: [:0]const u8, body: [:0]const u8) !void 
     _ = st.xmpp_send(conn, msg);
     if (client.program) |program| {
         program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ "me", body }) catch {};
+        if (client.messages.addOne(client.allocator)) |m| {
+            m.* = .{
+               .from = "me",
+               .to = std.mem.span(st.xmpp_jid_bare(ctx, to.ptr)),
+               .body = body,
+               .type = .chat,
+            };
+        } else |_| {
+        }
     }
 }
 
@@ -39,15 +48,23 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
         sender = std.mem.span(st.xmpp_jid_bare(ctx, jid.ptr));
     }
     const body: ?[:0]const u8 = util.stanzaGetChildByNameAlloc(client.allocator, stanza, "body") catch null;
-
-    //const to = util.stanzaGetTo(stanza);
-    //const message_type = parseMessageType(
-    //    st.xmpp_stanza_get_type(stanza),
-    //);
+    const to = util.stanzaGetToAlloc(client.allocator, stanza) catch "";
+    const message_type = parseMessageType(
+       st.xmpp_stanza_get_type(stanza),
+    );
 
     if (client.program) |program| {
         if (sender) |s| {
             program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ s, body orelse "" }) catch {};
+            if (client.messages.addOne(client.allocator)) |msg| {
+                msg.* = .{
+                   .from = s,
+                   .to = std.mem.span(st.xmpp_jid_bare(ctx, to.?)),
+                   .body = body orelse "",
+                   .type = message_type,
+                };
+            } else |_| {
+            }
         }
     }
 

@@ -117,6 +117,13 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                                 if (self.selected_jid) |jid| {
                                     if (std.fmt.allocPrintSentinel(ctx.persistent_allocator, "{s} > ", .{jid}, 0)) |prompt| {
                                         self.input.setPrompt(prompt);
+                                        // Let's populate logs
+                                        self.log.clear();
+                                        for(self.client.messages.items) |m| {
+                                            if (std.mem.eql(u8, m.from, jid) or std.mem.eql(u8, m.to, jid)) {
+                                                self.log.appendFmt(ctx.io, .info, "{s}: {s}", .{ m.from, m.body orelse "" }) catch {};
+                                            }
+                                        }
                                     } else |_| {}
                                 }
                             }

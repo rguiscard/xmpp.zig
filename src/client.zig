@@ -35,9 +35,9 @@ pub const MessageType = enum {
 
 pub const Message = struct {
     from: [:0]const u8,
-    to: ?[:0]const u8,
-    body: [:0]const u8,
-    message_type: MessageType,
+    to: [:0]const u8,
+    body: ?[:0]const u8,
+    type: MessageType,
 };
 
 allocator: std.mem.Allocator,
@@ -47,6 +47,7 @@ program: ?*zz.Program(ui),
 buddies: std.ArrayList(Buddy) = .empty,
 // presences may not sync with buddies, thus, in its own list
 presences: std.ArrayList(Available) = .empty,
+messages: std.ArrayList(Message) = .empty,
 
 const Self = @This();
 
