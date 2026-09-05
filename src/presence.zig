@@ -35,7 +35,7 @@ pub fn sendAvailable(client: *Client, show: ?[:0]const u8, status: ?[:0]const u8
     _ = st.xmpp_stanza_set_ns(stanza, "http://jabber.org/protocol/caps");
     _ = st.xmpp_stanza_set_attribute(stanza, "hash", "sha-1");
     _ = st.xmpp_stanza_set_attribute(stanza, "node", "https://github.com/rguiscard/xmpp.zig");
-    _ = st.xmpp_stanza_set_attribute(stanza, "ver", "QgayPKawpkPSDYmwT/WM94uAlu0=");
+    _ = st.xmpp_stanza_set_attribute(stanza, "ver", "QgayPKawpkPSDYmwT/WM94uAiu0=");
 
     _ = st.xmpp_stanza_add_child(presence, stanza);
 

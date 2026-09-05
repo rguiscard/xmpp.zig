@@ -5,11 +5,13 @@ pub const ui = @import("ui.zig");
 const Roster = @import("roster.zig");
 const Presence = @import("presence.zig");
 const Chat = @import("message.zig");
+const Disco = @import("disco.zig");
 
 const modules = .{
     Roster,
     Presence,
     Chat,
+    Disco,
 };
 
 pub const Buddy = struct {
@@ -84,7 +86,7 @@ pub fn print(self: *Self, stanza: ?*st.xmpp_stanza_t) void {
         return;
     }
     if (text != 0) {
-        std.debug.print("stanza: {s}\n", .{text[0..text_len]});
+        std.debug.print("\nstanza: {s}\n", .{text[0..text_len]});
         st.xmpp_free(st.xmpp_stanza_get_context(stanza), text);
         //st.xmpp_free(ctx, text);
     }
