@@ -78,10 +78,7 @@ pub fn main(init: std.process.Init) !void {
     var ctx: ?*st.xmpp_ctx_t = undefined;
     var conn: ?*st.xmpp_conn_t = undefined;
     var log: *st.xmpp_log_t = undefined;
-    var flags: c_int = 0;
-
-    // disable TLS for now
-    flags = st.XMPP_CONN_FLAG_DISABLE_TLS;
+    const flags: c_int = 0;
 
     // init library
     st.xmpp_initialize();
@@ -94,6 +91,15 @@ pub fn main(init: std.process.Init) !void {
 
     // create a connection
     conn = st.xmpp_conn_new(ctx);
+
+    if (init.environ_map.get("CA_FILE")) |value| {
+        // add local mkcert key
+        st.xmpp_conn_set_cafile(conn, value.ptr);
+    } else {
+        // disable TLS for now
+        //flags = st.XMPP_CONN_FLAG_DISABLE_TLS;
+    }
+
 
     // register modules
     if (conn) |_| {
