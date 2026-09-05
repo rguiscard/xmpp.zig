@@ -27,7 +27,19 @@ pub fn sendAvailable(client: *Client, show: ?[:0]const u8, status: ?[:0]const u8
         util.stanzaSetChildByName(presence, "status", value);
     }
 
-    //    client.print(presence);
+    // Let's include entity capability
+    const stanza = st.xmpp_stanza_new(ctx);
+    defer _ = st.xmpp_stanza_release(stanza);
+
+    _ = st.xmpp_stanza_set_name(stanza, "c");
+    _ = st.xmpp_stanza_set_ns(stanza, "http://jabber.org/protocol/caps");
+    _ = st.xmpp_stanza_set_attribute(stanza, "hash", "sha-1");
+    _ = st.xmpp_stanza_set_attribute(stanza, "node", "https://github.com/rguiscard/xmpp.zig");
+    _ = st.xmpp_stanza_set_attribute(stanza, "ver", "QgayPKawpkPSDYmwT/WM94uAlu0=");
+
+    _ = st.xmpp_stanza_add_child(presence, stanza);
+
+    client.print(presence);
 
     st.xmpp_send(conn, presence);
 }
