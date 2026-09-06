@@ -26,13 +26,13 @@ pub const HashAlgo = enum {
 
 // This calculates the same results of XEP-0115 simple and complex example
 
-pub fn calculateVerificationString(
+pub fn calculate(
     allocator: std.mem.Allocator,
     identities: []const Identity,
     features: []const []const u8,
     data_forms: ?[]const DataForm,
     algo: HashAlgo,
-) ![]u8 {
+) ![:0]const u8 {
     var buffer: std.ArrayList(u8) = .empty;
     defer buffer.deinit(allocator);
 
@@ -150,7 +150,7 @@ pub fn calculateVerificationString(
     }
 
     const encoded_len = base64_encoder.calcSize(digest_len);
-    const result = try allocator.alloc(u8, encoded_len);
+    const result = try allocator.allocSentinel(u8, encoded_len, 0);
     _ = base64_encoder.encode(result, digest[0..digest_len]);
 
     return result;
@@ -170,7 +170,7 @@ test "Simple Example" {
         "http://jabber.org/protocol/muc",
     };
 
-    const ver = try calculateVerificationString(allocator, &identities, &features, null, .sha1);
+    const ver = try calculate(allocator, &identities, &features, null, .sha1);
     defer allocator.free(ver);
 
     try std.testing.expectEqualStrings("QgayPKawpkPSDYmwT/WM94uAlu0=", ver);
@@ -214,7 +214,7 @@ test "Complex Example" {
         },
     };
 
-    const ver_psi = try calculateVerificationString(allocator, &identities, &features, &forms, .sha1);
+    const ver_psi = try calculate(allocator, &identities, &features, &forms, .sha1);
     defer allocator.free(ver_psi);
 
     try std.testing.expectEqualStrings("q07IKJEyjvHSyhy//CH0CxmKi8w=", ver_psi);

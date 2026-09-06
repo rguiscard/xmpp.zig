@@ -1,6 +1,8 @@
 const std = @import("std");
 const st = @import("strophe");
 const Client = @import("client.zig");
+const VerStr = @import("ver_str.zig");
+const Identity = VerStr.Identity;
 
 const NS_DISCO_INFO = "http://jabber.org/protocol/disco#info";
 const NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items";
@@ -72,4 +74,25 @@ fn handle_disco_items(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userda
     _ = stanza;
 
     return 1;
+}
+
+
+pub fn getVerStr(allocator: std.mem.Allocator) [:0]const u8 {
+    const identities = [_]Identity{
+        .{ .category = "client", .type = "pc", .lang = "", .name = "XMPP.zig" },
+    };
+
+    const features = [_][:0]const u8{
+        "http://jabber.org/protocol/caps",
+        "http://jabber.org/protocol/disco#info",
+        "http://jabber.org/protocol/disco#items",
+        "http://jabber.org/protocol/mood",
+        "http://jabber.org/protocol/mood+notify",
+        "http://jabber.org/protocol/activity",
+        "http://jabber.org/protocol/activity+notify",
+    };
+
+    const ver = VerStr.calculate(allocator, &identities, &features, null, .sha1) catch "";
+    return ver;
+//    defer allocator.free(ver);
 }
