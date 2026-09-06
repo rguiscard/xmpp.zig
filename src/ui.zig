@@ -14,6 +14,8 @@ log: zz.components.RichLog,
 input_mode: bool,
 input: zz.TextInput,
 
+buddy_modal: zz.Modal,
+
 const Self = @This();
 
 pub const Msg = union(enum) {
@@ -36,6 +38,8 @@ pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
     self.input = zz.TextInput.init(ctx.persistent_allocator);
     self.input.setPlaceholder("Enter new todo...");
     self.input.setPrompt("> ");
+
+    self.buddy_modal = zz.Modal.info("Buddy", "Details");
     return .none;
 }
 
@@ -84,6 +88,15 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                     },
                     else => self.input.handleKey(k),
                 }
+            } else if (self.buddy_modal.isVisible()) {
+                self.buddy_modal.handleKey(k);
+                if (self.buddy_modal.getResult()) |res| {
+                    switch (res) {
+                        .button_pressed => {}, // button at idx was pressed
+                        .dismissed => {}, // user pressed Escape
+                    }
+                }
+                return .none;
             } else {
                 switch (k.key) {
                     .char => |c| switch (c) {
@@ -101,6 +114,12 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                         '3' => self.selected_panel = 2,
                         'm' => { // test sending PEP mood
                             PubSub.sendMood(client, "happy", "What a beautiful day");
+                        },
+                        'v' => {
+                            if (self.selected_panel == 0) {
+                                self.buddy_modal.title = client.to_jid orelse "Buddy";
+                                self.buddy_modal.show();
+                            }
                         },
                         else => {
                             if (self.selected_panel == 0) {
@@ -162,6 +181,11 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
 
 pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
     const alloc = ctx.allocator;
+
+    if (self.buddy_modal.isVisible()) {
+        return self.buddy_modal.viewWithBackdrop(alloc, ctx.width, ctx.height);
+    }
+
     const w: u16 = @intCast(@min(ctx.width, std.math.maxInt(u16)));
     const h: u16 = @intCast(@min(ctx.height, std.math.maxInt(u16)));
 
