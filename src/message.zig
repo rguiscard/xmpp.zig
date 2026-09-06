@@ -3,6 +3,7 @@ const st = @import("strophe");
 const util = @import("util.zig");
 
 const Client = @import("client.zig");
+const PubSub = @import("pubsub.zig");
 const Message = Client.Message;
 const MessageType = Client.MessageType;
 
@@ -13,6 +14,7 @@ pub fn register(client: *Client) void {
 pub fn sendMessage(client: *Client, to: [:0]const u8, body: [:0]const u8) !void {
     const ctx = client.ctx;
     const conn = client.conn;
+    const program = client.program;
 
     const id = st.xmpp_uuid_gen(ctx);
     defer st.xmpp_free(ctx, id);
@@ -22,17 +24,15 @@ pub fn sendMessage(client: *Client, to: [:0]const u8, body: [:0]const u8) !void 
 
     _ = st.xmpp_message_set_body(msg, body.ptr);
     _ = st.xmpp_send(conn, msg);
-    if (client.program) |program| {
-        program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ "me", body }) catch {};
-        if (client.messages.addOne(client.allocator)) |m| {
-            m.* = .{
-               .from = "me",
-               .to = std.mem.span(st.xmpp_jid_bare(ctx, to.ptr)),
-               .body = body,
-               .type = .chat,
-            };
-        } else |_| {
-        }
+    program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ "me", body }) catch {};
+    if (client.messages.addOne(client.allocator)) |m| {
+        m.* = .{
+           .from = "me",
+           .to = std.mem.span(st.xmpp_jid_bare(ctx, to.ptr)),
+           .body = body,
+           .type = .chat,
+        };
+    } else |_| {
     }
 }
 
@@ -48,6 +48,7 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
     );
 
     if (event != null) {
+        PubSub.handle_event_message(client, stanza);
     } else {
         handle_chat_message(client, stanza);
     }
@@ -56,6 +57,7 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
 
 fn handle_chat_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
     const ctx = client.ctx;
+    const program = client.program;
     const from = util.stanzaGetFrom(stanza);
     var sender: ?[:0]const u8 = null;
     if (from) |jid| {
@@ -67,18 +69,16 @@ fn handle_chat_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
        st.xmpp_stanza_get_type(stanza),
     );
 
-    if (client.program) |program| {
-        if (sender) |s| {
-            program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ s, body orelse "" }) catch {};
-            if (client.messages.addOne(client.allocator)) |msg| {
-                msg.* = .{
-                   .from = s,
-                   .to = std.mem.span(st.xmpp_jid_bare(ctx, to.?)),
-                   .body = body orelse "",
-                   .type = message_type,
-                };
-            } else |_| {
-            }
+    if (sender) |s| {
+        program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ s, body orelse "" }) catch {};
+        if (client.messages.addOne(client.allocator)) |msg| {
+            msg.* = .{
+               .from = s,
+               .to = std.mem.span(st.xmpp_jid_bare(ctx, to.?)),
+               .body = body orelse "",
+               .type = message_type,
+            };
+        } else |_| {
         }
     }
 }

@@ -45,7 +45,7 @@ pub const Message = struct {
 allocator: std.mem.Allocator,
 conn: ?*st.xmpp_conn_t,
 ctx: ?*st.xmpp_ctx_t,
-program: ?*zz.Program(ui),
+program: *zz.Program(ui),
 buddies: std.ArrayList(Buddy) = .empty,
 // presences may not sync with buddies, thus, in its own list
 presences: std.ArrayList(Available) = .empty,

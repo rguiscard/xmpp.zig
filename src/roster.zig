@@ -54,9 +54,7 @@ fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*
         }
         if (client.buddies.items.len > 0) {
             //            std.debug.print("buddies {d}\n", .{client.buddies.items.len});
-            if (client.program) |program| {
-                program.model.setBuddies(client.buddies) catch {};
-            }
+            client.program.model.setBuddies(client.buddies) catch {};
         }
     }
 

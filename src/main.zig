@@ -26,9 +26,7 @@ fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: 
     } else if (status == st.XMPP_CONN_DISCONNECT) {
         std.debug.print("DEBUG: disconnected\n", .{});
         st.xmpp_stop(ctx);
-        if (client.program) |program| {
-            program.quit();
-        }
+        client.program.quit();
     } else if (status == st.XMPP_CONN_FAIL) {
         std.debug.print("DEBUG: failed\n", .{});
     } else {
@@ -123,15 +121,13 @@ pub fn main(init: std.process.Init) !void {
                 if (context.loop_status == st.XMPP_LOOP_NOTSTARTED) {
                     context.loop_status = st.XMPP_LOOP_RUNNING;
 
-                    if (client.program) |prog| {
-                        try prog.start();
-                        prog.model.setXMPPClient(&client);
+                    try program.start();
+                    program.model.setXMPPClient(&client);
 
-                        context.timeout = 100;
-                        while (prog.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
-                            try prog.tick();
-                            st.xmpp_run_once(ctx, context.timeout);
-                        }
+                    context.timeout = 100;
+                    while (program.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
+                        try program.tick();
+                        st.xmpp_run_once(ctx, context.timeout);
                     }
                     context.loop_status = st.XMPP_LOOP_NOTSTARTED;
                 }

@@ -4,6 +4,7 @@ const zz = @import("zigzag");
 const Client = @import("client.zig");
 const Buddy = @import("client.zig").Buddy;
 const Chat = @import("message.zig");
+const PubSub = @import("pubsub.zig");
 
 selected_panel: u8,
 selected_jid: ?[:0]const u8, // bare one
@@ -98,6 +99,9 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                         '1' => self.selected_panel = 0,
                         '2' => self.selected_panel = 1,
                         '3' => self.selected_panel = 2,
+                        'm' => { // test sending PEP mood
+                            PubSub.sendMood(self.client, "happy", "What a beautiful day");
+                        },
                         else => {
                             if (self.selected_panel == 0) {
                                 self.list.handleKey(k);
