@@ -17,10 +17,10 @@ pub fn sendMood(client: *Client, state: [:0]const u8, text: [:0]const u8) void {
 
     const iq = st.xmpp_iq_new(ctx, "set", iq_id);
     defer _ = st.xmpp_stanza_release(iq);
-    if (client.program.model.selected_jid) |jid| {
-        _ = st.xmpp_stanza_set_to(iq, jid);
-        _ = st.xmpp_stanza_set_from(iq, "me");
-    }
+//    if (client.to_jid) |jid| {
+//        _ = st.xmpp_stanza_set_to(iq, jid);
+//        _ = st.xmpp_stanza_set_from(iq, client.me);
+//    }
 
     const pubsub = st.xmpp_stanza_new(ctx);
     defer _ = st.xmpp_stanza_release(pubsub);
@@ -57,12 +57,35 @@ pub fn sendMood(client: *Client, state: [:0]const u8, text: [:0]const u8) void {
 
     const value = st.xmpp_stanza_new(ctx);
     defer _ = st.xmpp_stanza_release(value);
-    _ = st.xmpp_stanza_set_text(txt, text);
+    _ = st.xmpp_stanza_set_text(value, text);
     _ = st.xmpp_stanza_add_child(txt, value);
+
+    _ = st.xmpp_id_handler_add(client.conn, handle_mood_reply, iq_id, client);
 
     _ = st.xmpp_send(client.conn, iq);
 }
 
+fn handle_mood_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
+    //const client: *Client = @ptrCast(@alignCast(userdata));
+    //    client.print(stanza);
+    _ = userdata;
+    _ = conn;
+
+    const result_type = st.xmpp_stanza_get_type(stanza);
+    if (result_type == null) {
+        return 1; // keep waiting
+    } else {
+        const result:[:0]const u8 = std.mem.span(result_type);
+        if (std.mem.eql(u8, "result", result)) {
+            std.debug.print("publish mood successfully.\n", .{});
+        } else {
+            std.debug.print("publish mood failed.\n", .{});
+        }
+        return 0;
+    }
+}
+
 pub fn handle_event_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
+    std.debug.print("handle_event\n", .{});
     client.print(stanza);
 }

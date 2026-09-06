@@ -7,7 +7,6 @@ const Chat = @import("message.zig");
 const PubSub = @import("pubsub.zig");
 
 selected_panel: u8,
-selected_jid: ?[:0]const u8, // bare one
 client: *Client,
 
 list: zz.List(Buddy),
@@ -59,6 +58,7 @@ pub fn setBuddies(self: *Self, buddies: std.ArrayList(Buddy)) !void {
 }
 
 pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
+    const client = self.client;
     switch (msg) {
         .key => |k| {
             if (self.input_mode) {
@@ -70,8 +70,8 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                     .enter => {
                         if (self.input.getValue().len > 0) {
                             const text = ctx.persistent_allocator.dupeZ(u8, self.input.getValue()) catch return .none;
-                            if (self.selected_jid) |jid| {
-                                Chat.sendMessage(self.client, jid, text) catch {};
+                            if (client.to_jid) |jid| {
+                                Chat.sendMessage(client, jid, text) catch {};
                             }
                             self.input.setValue("") catch {};
                         }
@@ -88,7 +88,7 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                 switch (k.key) {
                     .char => |c| switch (c) {
                         'q' => {
-                            st.xmpp_disconnect(self.client.conn);
+                            st.xmpp_disconnect(client.conn);
                             // return .quit; // it will quit after disconnection is done
                             return .none;
                         },
@@ -100,7 +100,7 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                         '2' => self.selected_panel = 1,
                         '3' => self.selected_panel = 2,
                         'm' => { // test sending PEP mood
-                            PubSub.sendMood(self.client, "happy", "What a beautiful day");
+                            PubSub.sendMood(client, "happy", "What a beautiful day");
                         },
                         else => {
                             if (self.selected_panel == 0) {
@@ -116,14 +116,14 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                             if (self.list.cursor < visible.len) {
                                 const item_idx = visible[self.list.cursor];
                                 const buddy = self.list.items.items[item_idx].value;
-                                self.selected_jid = std.mem.span(st.xmpp_jid_bare(self.client.ctx, buddy.jid.ptr));
-                                // need to free selected_jid later ?
-                                if (self.selected_jid) |jid| {
+                                client.to_jid = std.mem.span(st.xmpp_jid_bare(client.ctx, buddy.jid.ptr));
+                                // need to free to_jid later ?
+                                if (client.to_jid) |jid| {
                                     if (std.fmt.allocPrintSentinel(ctx.persistent_allocator, "{s} > ", .{jid}, 0)) |prompt| {
                                         self.input.setPrompt(prompt);
                                         // Let's populate logs
                                         self.log.clear();
-                                        for(self.client.messages.items) |m| {
+                                        for(client.messages.items) |m| {
                                             if (std.mem.eql(u8, m.from, jid) or std.mem.eql(u8, m.to, jid)) {
                                                 self.log.appendFmt(ctx.io, .info, "{s}: {s}", .{ m.from, m.body orelse "" }) catch {};
                                             }
@@ -142,7 +142,7 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                         }
                     },
                     .escape => {
-                        st.xmpp_disconnect(self.client.conn);
+                        st.xmpp_disconnect(client.conn);
                         // return .quit; // it will quit after disconnection is done
                         return .none;
                     },

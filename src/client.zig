@@ -51,6 +51,9 @@ buddies: std.ArrayList(Buddy) = .empty,
 presences: std.ArrayList(Available) = .empty,
 messages: std.ArrayList(Message) = .empty,
 
+to_jid: ?[:0]const u8 = null,
+me: [:0]const u8,
+
 const Self = @This();
 
 pub fn init(
@@ -58,12 +61,13 @@ pub fn init(
     conn: ?*st.xmpp_conn_t,
     ctx: ?*st.xmpp_ctx_t,
     program: *zz.Program(ui),
+    me: [:0]const u8,
 ) !Self {
-    var client: Self = .{ .allocator = allocator, .conn = conn, .ctx = ctx, .program = program };
+    var client: Self = .{ .allocator = allocator, .conn = conn, .ctx = ctx, .program = program, .me = me, };
 
     client.buddies = try std.ArrayList(Buddy).initCapacity(allocator, 10);
 
-    // client.register();
+    // client.register(); // register after connection, not here
 
     return client;
 }

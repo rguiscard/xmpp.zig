@@ -108,7 +108,7 @@ pub fn main(init: std.process.Init) !void {
         var program = zz.Program(ui).init(arena, io, init.environ_map);
         defer program.deinit();
 
-        var client = try Client.init(arena, conn, ctx, &program);
+        var client = try Client.init(arena, conn, ctx, &program, jid);
 
         // setup authentication information
         st.xmpp_conn_set_jid(conn, jid);

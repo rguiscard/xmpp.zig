@@ -27,7 +27,7 @@ pub fn sendMessage(client: *Client, to: [:0]const u8, body: [:0]const u8) !void 
     program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ "me", body }) catch {};
     if (client.messages.addOne(client.allocator)) |m| {
         m.* = .{
-           .from = "me",
+           .from = client.me,
            .to = std.mem.span(st.xmpp_jid_bare(ctx, to.ptr)),
            .body = body,
            .type = .chat,
@@ -40,6 +40,8 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
     const client: *Client = @ptrCast(@alignCast(userdata));
 
     _ = conn;
+
+    client.print(stanza);
 
     // Let's see whether it is a pubsub#event
     const event = st.xmpp_stanza_get_child_by_ns(
