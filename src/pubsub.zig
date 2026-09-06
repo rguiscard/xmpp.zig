@@ -17,10 +17,6 @@ pub fn sendMood(client: *Client, state: [:0]const u8, text: [:0]const u8) void {
 
     const iq = st.xmpp_iq_new(ctx, "set", iq_id);
     defer _ = st.xmpp_stanza_release(iq);
-//    if (client.to_jid) |jid| {
-//        _ = st.xmpp_stanza_set_to(iq, jid);
-//        _ = st.xmpp_stanza_set_from(iq, client.me);
-//    }
 
     const pubsub = st.xmpp_stanza_new(ctx);
     defer _ = st.xmpp_stanza_release(pubsub);
@@ -85,7 +81,48 @@ fn handle_mood_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
     }
 }
 
+// This is the child stanza after get_child_by_ns
 pub fn handle_event_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
-    std.debug.print("handle_event\n", .{});
     client.print(stanza);
+
+    const items = st.xmpp_stanza_get_child_by_name(stanza, "items");
+
+    if (items == null)
+        return;
+
+    const node = st.xmpp_stanza_get_attribute(items, "node");
+
+    if ((node != null) and std.mem.eql(u8, std.mem.span(node), "http://jabber.org/protocol/mood")) {
+        const item = st.xmpp_stanza_get_child_by_name(items, "item");
+
+        if (item == null) {
+            return;
+        }
+
+        const mood = st.xmpp_stanza_get_child_by_ns( item, "http://jabber.org/protocol/mood");
+
+        if (mood == null) {
+            return;
+        }
+
+        // The first child is the mood value, e.g. <happy/>
+        var child = st.xmpp_stanza_get_children(mood);
+        var mood_val:?[:0]const u8 = null;
+        var text:?[:0]const u8 = null;
+
+        while (child != null) {
+            const name = st.xmpp_stanza_get_name(child);
+
+            if ((name != null) and (text == null) and std.mem.eql(u8, "text", std.mem.span(name))) {
+                const txt = st.xmpp_stanza_get_text(child);
+                text = std.mem.span(txt);
+            } else if ((name != null) and (mood_val == null)) {
+                mood_val = std.mem.span(name);
+            }
+
+            child = st.xmpp_stanza_get_next(child);
+        }
+
+        std.debug.print("\n({s}) {s}\n", .{mood_val orelse "", text orelse ""});
+    }
 }

@@ -50,7 +50,7 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
     );
 
     if (event != null) {
-        PubSub.handle_event_message(client, stanza);
+        PubSub.handle_event_message(client, event);
     } else {
         handle_chat_message(client, stanza);
     }
