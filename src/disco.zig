@@ -14,7 +14,7 @@ fn handle_disco_info(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
     const client: *Client = @ptrCast(@alignCast(userdata));
     _ = conn;
 
-    client.print(stanza);
+//    client.print(stanza);
 
     const disco_id = st.xmpp_uuid_gen(client.ctx);
     defer st.xmpp_free(client.ctx, disco_id);
@@ -58,7 +58,7 @@ fn handle_disco_info(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
         _ = st.xmpp_stanza_add_child(query, stz);
     }
  
-    client.print(reply);
+//    client.print(reply);
 
     _ = st.xmpp_send(client.conn, reply);
 

@@ -38,10 +38,24 @@ pub fn sendMessage(client: *Client, to: [:0]const u8, body: [:0]const u8) !void 
 
 fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
     const client: *Client = @ptrCast(@alignCast(userdata));
-    const ctx = client.ctx;
 
     _ = conn;
 
+    // Let's see whether it is a pubsub#event
+    const event = st.xmpp_stanza_get_child_by_ns(
+            stanza,
+            "http://jabber.org/protocol/pubsub#event"
+    );
+
+    if (event != null) {
+    } else {
+        handle_chat_message(client, stanza);
+    }
+    return 1;
+}
+
+fn handle_chat_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
+    const ctx = client.ctx;
     const from = util.stanzaGetFrom(stanza);
     var sender: ?[:0]const u8 = null;
     if (from) |jid| {
@@ -67,8 +81,6 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
             }
         }
     }
-
-    return 1;
 }
 
 fn parseMessageType(cstr: [*c]const u8) MessageType {
