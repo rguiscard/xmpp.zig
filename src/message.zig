@@ -38,7 +38,6 @@ pub fn sendMessage(client: *Client, to: [:0]const u8, body: [:0]const u8) !void 
 
 fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
     const client: *Client = @ptrCast(@alignCast(userdata));
-
     _ = conn;
 
     client.print(stanza);

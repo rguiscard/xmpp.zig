@@ -83,6 +83,8 @@ fn handle_mood_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
 
 // This is the child stanza after get_child_by_ns
 pub fn handle_event_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
+    const program = client.program;
+
     client.print(stanza);
 
     const items = st.xmpp_stanza_get_child_by_name(stanza, "items");
@@ -123,6 +125,9 @@ pub fn handle_event_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
             child = st.xmpp_stanza_get_next(child);
         }
 
-        std.debug.print("\n({s}) {s}\n", .{mood_val orelse "", text orelse ""});
+        // std.debug.print("\n({s}) {s}\n", .{mood_val orelse "", text orelse ""});
+
+        program.model.log.appendFmt(program.context.io, .info, "({s}) {s}", .{ mood_val orelse "", text orelse "" }) catch {};
+        // keep a copy in client.messages ?
     }
 }
