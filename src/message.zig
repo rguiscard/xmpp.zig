@@ -53,12 +53,11 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
 }
 
 fn handle_chat_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
-    const ctx = client.ctx;
     const program = client.program;
     const from = util.stanzaGetFrom(stanza);
     var sender: ?[:0]const u8 = null;
     if (from) |jid| {
-        sender = std.mem.span(st.xmpp_jid_bare(ctx, jid.ptr));
+        sender = client.bareJID(jid);
     }
     const body: ?[:0]const u8 = util.stanzaGetChildByNameAlloc(client.allocator, stanza, "body") catch null;
     const to = util.stanzaGetToAlloc(client.allocator, stanza) catch "";
@@ -71,7 +70,7 @@ fn handle_chat_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
         if (client.messages.addOne(client.allocator)) |msg| {
             msg.* = .{
                 .from = s,
-                .to = std.mem.span(st.xmpp_jid_bare(ctx, to.?)),
+                .to = client.bareJID(to orelse client.me),
                 .body = body orelse "",
                 .type = message_type,
             };

@@ -135,8 +135,7 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                             if (self.list.cursor < visible.len) {
                                 const item_idx = visible[self.list.cursor];
                                 const buddy = self.list.items.items[item_idx].value;
-                                client.to_jid = std.mem.span(st.xmpp_jid_bare(client.ctx, buddy.jid.ptr));
-                                // need to free to_jid later ?
+                                client.to_jid = client.bareJID(buddy.jid);
                                 if (client.to_jid) |jid| {
                                     if (std.fmt.allocPrintSentinel(ctx.persistent_allocator, "{s} > ", .{jid}, 0)) |prompt| {
                                         self.input.setPrompt(prompt);
