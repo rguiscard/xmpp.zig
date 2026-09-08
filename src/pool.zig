@@ -31,8 +31,10 @@ pub fn StringPool(comptime T: type) type {
         }
 
         pub fn clear(self: *Self) void {
-            for (self.list.items) |item| {
-                self.allocator.free(item);
+            if (T == [:0]const u8) {
+                for (self.list.items) |item| {
+                    self.allocator.free(item);
+                }
             }
             self.list.clearRetainingCapacity();
 
@@ -170,4 +172,27 @@ test "no overwrites" {
             try testing.expect(std.mem.eql(u8, v, vstr));
         }
     }
+}
+
+test "struct" {
+    const Contact = struct {
+        name: []const u8,
+        age: usize,
+    };
+
+    var pool = StringPool(Contact).init(std.testing.allocator);
+    defer pool.deinit();
+
+    const key = "Bob";
+    const value: Contact = .{
+        .name = "Bob",
+        .age = 28,
+    };
+    const pos: usize = 0;
+
+    _ = try pool.add(key, value);
+    try testing.expect(pool.get_pos(key).? == pos);
+    try testing.expect(pool.size() == 1);
+    const got = pool.fetch(key);
+    try testing.expect(std.mem.eql(u8, got.?.name, "Bob"));
 }
