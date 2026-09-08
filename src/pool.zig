@@ -5,87 +5,98 @@ const testing = std.testing;
 // The main purpose is that others do not need to own these objects
 // All objects will stay in pool until the end of program
 
-pub const StringPool = struct {
-    pub const StringId = usize; // size of pointer
-    const Self = @This();
+pub fn StringPool(comptime T: type) type {
 
-    allocator: std.mem.Allocator,
-    list: std.ArrayList([:0]const u8),
-    hash: std.StringHashMap(StringId),
+    return struct {
+        pub const StringId = usize; // size of pointer
+        const Self = @This();
 
-    pub fn init(allocator: std.mem.Allocator) Self {
-        const self: Self = .{
-            .allocator = allocator,
-            .list = .empty,
-            .hash = std.StringHashMap(StringId).init(allocator),
-        };
-        return self;
-    }
+        allocator: std.mem.Allocator,
+        list: std.ArrayList(T),
+        hash: std.StringHashMap(StringId),
 
-    pub fn deinit(self: *Self) void {
-        self.clear();
-        self.hash.deinit();
-        self.list.deinit(self.allocator);
-    }
-
-    pub fn clear(self: *Self) void {
-        for (self.list.items) |item| {
-            self.allocator.free(item);
+        pub fn init(allocator: std.mem.Allocator) Self {
+            const self: Self = .{
+                .allocator = allocator,
+                .list = .empty,
+                .hash = std.StringHashMap(StringId).init(allocator),
+            };
+            return self;
         }
-        self.list.clearRetainingCapacity();
 
-        var it = self.hash.iterator();
-        while (it.next()) |entry| {
-            self.allocator.free(entry.key_ptr.*);
+        pub fn deinit(self: *Self) void {
+            self.clear();
+            self.hash.deinit();
+            self.list.deinit(self.allocator);
         }
-        self.hash.clearRetainingCapacity();
-    }
 
-    pub fn contains(self: *Self, key: [:0]const u8) bool {
-        return self.hash.contains(key);
-    }
+        pub fn clear(self: *Self) void {
+            for (self.list.items) |item| {
+                self.allocator.free(item);
+            }
+            self.list.clearRetainingCapacity();
 
-    // Make a copy of str. Owner can free his own str.
-    pub fn add(self: *Self, key: []const u8, value: [:0]const u8) !StringId {
-        const entry = self.hash.getEntry(key);
-        if (entry) |e| {
-            return e.value_ptr.*;
+            var it = self.hash.iterator();
+            while (it.next()) |entry| {
+                self.allocator.free(entry.key_ptr.*);
+            }
+            self.hash.clearRetainingCapacity();
         }
-        const pos = self.list.items.len;
-        const kcopy = self.allocator.dupe(u8, key) catch unreachable;
-        const vcopy = self.allocator.dupeZ(u8, value) catch unreachable;
-        try self.list.append(self.allocator, vcopy);
-        _ = try self.hash.put(kcopy, pos);
-        return pos;
-    }
 
-    pub fn fetch(self: *Self, key: [:0]const u8) ?[:0]const u8 {
-        if (self.get_pos(key)) |pos| {
-            return self.get_str(pos);
+        pub fn contains(self: *Self, key: [:0]const u8) bool {
+            return self.hash.contains(key);
         }
-        return null;
-    }
 
-    pub fn get_pos(self: Self, key: [:0]const u8) ?StringId {
-        const entry = self.hash.getEntry(key);
-        if (entry) |e| {
-            return e.value_ptr.*;
+        // clone value to keep in array list
+        fn clone(allocator: std.mem.Allocator, value: T) !T {
+            if (T == [:0]const u8) {
+                return try allocator.dupeZ(u8, value);
+            }
+            return value;
         }
-        return null;
-    }
 
-    pub fn get_str(self: Self, pos: StringId) ?[:0]const u8 {
-        if (pos >= self.list.items.len) return null;
-        return self.list.items[pos];
-    }
+        // Make a copy of str. Owner can free his own str.
+        pub fn add(self: *Self, key: []const u8, value: T) !StringId {
+            const entry = self.hash.getEntry(key);
+            if (entry) |e| {
+                return e.value_ptr.*;
+            }
+            const pos = self.list.items.len;
+            const kcopy = self.allocator.dupe(u8, key) catch unreachable;
+            const vcopy = clone(self.allocator, value) catch unreachable;
+            try self.list.append(self.allocator, vcopy);
+            _ = try self.hash.put(kcopy, pos);
+            return pos;
+        }
 
-    pub fn size(self: Self) usize {
-        return self.list.items.len;
-    }
-};
+        pub fn fetch(self: *Self, key: [:0]const u8) ?T {
+            if (self.get_pos(key)) |pos| {
+                return self.get_str(pos);
+            }
+            return null;
+        }
+
+        pub fn get_pos(self: Self, key: [:0]const u8) ?StringId {
+            const entry = self.hash.getEntry(key);
+            if (entry) |e| {
+                return e.value_ptr.*;
+            }
+            return null;
+        }
+
+        pub fn get_str(self: Self, pos: StringId) ?T {
+            if (pos >= self.list.items.len) return null;
+            return self.list.items[pos];
+        }
+
+        pub fn size(self: Self) usize {
+            return self.list.items.len;
+        }
+    };
+}
 
 test "basic" {
-    var pool = StringPool.init(std.testing.allocator);
+    var pool = StringPool([:0]const u8).init(std.testing.allocator);
     defer pool.deinit();
 
     const key = "key";
@@ -99,7 +110,7 @@ test "basic" {
 }
 
 test "no overwrites" {
-    var pool = StringPool.init(std.testing.allocator);
+    var pool = StringPool([:0]const u8).init(std.testing.allocator);
     defer pool.deinit();
 
     const key = "This is key #";

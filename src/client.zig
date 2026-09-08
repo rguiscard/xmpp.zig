@@ -19,6 +19,7 @@ pub const Buddy = struct {
     name: ?[:0]const u8,
     jid: [:0]const u8,
     presense: bool,
+    subscription: [:0]const u8,
 };
 
 pub const Available = struct {
@@ -52,7 +53,7 @@ buddies: std.ArrayList(Buddy) = .empty,
 presences: std.ArrayList(Available) = .empty,
 messages: std.ArrayList(Message) = .empty,
 
-jids: Pool.StringPool = undefined,
+jids: Pool.StringPool([:0]const u8) = undefined,
 
 to_jid: ?[:0]const u8 = null,
 me: [:0]const u8,
@@ -75,7 +76,7 @@ pub fn init(
     };
 
     client.buddies = try std.ArrayList(Buddy).initCapacity(allocator, 10);
-    client.jids = Pool.StringPool.init(allocator);
+    client.jids = Pool.StringPool([:0]const u8).init(allocator);
 
     // client.register(); // register after connection, not here
 

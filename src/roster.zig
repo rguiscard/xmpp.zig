@@ -43,8 +43,8 @@ fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*
         while (item != null) {
             const name = st.xmpp_stanza_get_attribute(item, "name");
             const jid = st.xmpp_stanza_get_attribute(item, "jid");
-            //            const subscription = st.xmpp_stanza_get_attribute(item, "subscription");
-            var buddy: Buddy = .{ .name = null, .jid = client.allocator.dupeZ(u8, std.mem.span(jid)) catch "", .presense = false };
+            const subscription = st.xmpp_stanza_get_attribute(item, "subscription");
+            var buddy: Buddy = .{ .name = null, .jid = client.allocator.dupeZ(u8, std.mem.span(jid)) catch "", .presense = false, .subscription = client.allocator.dupeZ(u8, std.mem.span(subscription)) catch "" };
             //            std.debug.print("\t {s} sub={s}\n", .{ std.mem.span(jid), std.mem.span(subscription) });
             if (name) |n| {
                 buddy.name = client.allocator.dupeZ(u8, std.mem.span(n)) catch "";

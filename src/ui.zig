@@ -29,7 +29,7 @@ pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
     self.list.multi_select = false;
     self.list.height = 50;
     const Item = zz.List(Buddy).Item;
-    try self.list.addItem(Item.init(.{ .name = null, .jid = "dummy@localhost", .presense = false }, "Dummy"));
+    try self.list.addItem(Item.init(.{ .name = null, .jid = "dummy@localhost", .presense = false, .subscription = "none" }, "Dummy"));
 
     self.log = zz.components.RichLog.init(ctx.persistent_allocator, 500);
     self.log.show_timestamps = true;
