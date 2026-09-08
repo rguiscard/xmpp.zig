@@ -27,13 +27,12 @@ pub fn sendMessage(client: *Client, to: [:0]const u8, body: [:0]const u8) !void 
     program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ "me", body }) catch {};
     if (client.messages.addOne(client.allocator)) |m| {
         m.* = .{
-           .from = client.me,
-           .to = std.mem.span(st.xmpp_jid_bare(ctx, to.ptr)),
-           .body = body,
-           .type = .chat,
+            .from = client.me,
+            .to = client.bareJID(to),
+            .body = body,
+            .type = .chat,
         };
-    } else |_| {
-    }
+    } else |_| {}
 }
 
 fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
@@ -43,10 +42,7 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
     client.print(stanza);
 
     // Let's see whether it is a pubsub#event
-    const event = st.xmpp_stanza_get_child_by_ns(
-            stanza,
-            "http://jabber.org/protocol/pubsub#event"
-    );
+    const event = st.xmpp_stanza_get_child_by_ns(stanza, "http://jabber.org/protocol/pubsub#event");
 
     if (event != null) {
         PubSub.handle_event_message(client, event);
@@ -67,20 +63,19 @@ fn handle_chat_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
     const body: ?[:0]const u8 = util.stanzaGetChildByNameAlloc(client.allocator, stanza, "body") catch null;
     const to = util.stanzaGetToAlloc(client.allocator, stanza) catch "";
     const message_type = parseMessageType(
-       st.xmpp_stanza_get_type(stanza),
+        st.xmpp_stanza_get_type(stanza),
     );
 
     if (sender) |s| {
         program.model.log.appendFmt(program.context.io, .info, "{s}: {s}", .{ s, body orelse "" }) catch {};
         if (client.messages.addOne(client.allocator)) |msg| {
             msg.* = .{
-               .from = s,
-               .to = std.mem.span(st.xmpp_jid_bare(ctx, to.?)),
-               .body = body orelse "",
-               .type = message_type,
+                .from = s,
+                .to = std.mem.span(st.xmpp_jid_bare(ctx, to.?)),
+                .body = body orelse "",
+                .type = message_type,
             };
-        } else |_| {
-        }
+        } else |_| {}
     }
 }
 

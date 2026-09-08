@@ -6,6 +6,7 @@ const Roster = @import("roster.zig");
 const Presence = @import("presence.zig");
 const Chat = @import("message.zig");
 const Disco = @import("disco.zig");
+const Pool = @import("pool.zig");
 
 const modules = .{
     Roster,
@@ -51,6 +52,8 @@ buddies: std.ArrayList(Buddy) = .empty,
 presences: std.ArrayList(Available) = .empty,
 messages: std.ArrayList(Message) = .empty,
 
+jids: Pool.StringPool = undefined,
+
 to_jid: ?[:0]const u8 = null,
 me: [:0]const u8,
 
@@ -63,13 +66,44 @@ pub fn init(
     program: *zz.Program(ui),
     me: [:0]const u8,
 ) !Self {
-    var client: Self = .{ .allocator = allocator, .conn = conn, .ctx = ctx, .program = program, .me = me, };
+    var client: Self = .{
+        .allocator = allocator,
+        .conn = conn,
+        .ctx = ctx,
+        .program = program,
+        .me = me,
+    };
 
     client.buddies = try std.ArrayList(Buddy).initCapacity(allocator, 10);
+    client.jids = Pool.StringPool.init(allocator);
 
     // client.register(); // register after connection, not here
 
     return client;
+}
+
+// Return bare jid or original jid
+// Probably should raise error if it cannot get bare jid ?
+pub fn bareJID(self: *Self, jid: [:0]const u8) [:0]const u8 {
+    const ctx = self.ctx;
+
+    const id = self.jids.fetch(jid);
+    if (id) |jid_bare| {
+        return jid_bare;
+    } else {
+        const jid_bare = st.xmpp_jid_bare(ctx, jid.ptr);
+        defer st.xmpp_free(ctx, jid_bare);
+        if (jid_bare != null) {
+            const jid_str = std.mem.span(jid_bare);
+            // jids pool will own both jid and jid_bare
+            if (self.jids.add(jid, jid_str)) |pos| {
+                return self.jids.get_str(pos) orelse jid;
+            } else |_| {
+                return jid;
+            }
+        }
+    }
+    return jid;
 }
 
 pub fn register(self: *Self) void {
