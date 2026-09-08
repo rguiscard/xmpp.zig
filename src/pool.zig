@@ -4,7 +4,9 @@ const testing = std.testing;
 // Data structure to keep objects in memory.
 // The main purpose is that others do not need to own these objects
 // All objects will stay in pool until the end of program
-
+// To manage memory, see test "clonable struct" (pointer and plain version).
+// Use struct and pass *Struct (or Struct) to StringPool(T).
+// Implement clone() and clear() to copy and free fields of struct.
 pub fn StringPool(comptime T: type) type {
 
     return struct {
@@ -31,11 +33,32 @@ pub fn StringPool(comptime T: type) type {
         }
 
         pub fn clear(self: *Self) void {
-            if (T == [:0]const u8) {
+            if ((T == [:0]const u8) or (T == []const u8)) {
                 for (self.list.items) |item| {
                     self.allocator.free(item);
                 }
+            } else {
+                switch (@typeInfo(T)) {
+                    .pointer => |ptr| {
+                        if (@typeInfo(ptr.child) == .@"struct") {
+                            if (@hasDecl(ptr.child, "clear")) {
+                                for (self.list.items) |item| {
+                                    item.clear(self.allocator);
+                                }
+                            }
+                        }
+                    },
+                    .@"struct" => {
+                        if (@hasDecl(T, "clear")) {
+                            for (self.list.items) |item| {
+                                item.clear(self.allocator);
+                            }
+                        }
+                    },
+                    else => {},
+                }
             }
+
             self.list.clearRetainingCapacity();
 
             var it = self.hash.iterator();
@@ -54,6 +77,27 @@ pub fn StringPool(comptime T: type) type {
             if (T == [:0]const u8) {
                 return try allocator.dupeZ(u8, value);
             }
+
+            if (T == []const u8) {
+                return try allocator.dupe(u8, value);
+            }
+
+            switch (@typeInfo(T)) {
+                .pointer => |ptr| {
+                    if (@typeInfo(ptr.child) == .@"struct") {
+                        if (@hasDecl(ptr.child, "clone")) {
+                            return try value.clone(allocator);
+                        }
+                    }
+                },
+                .@"struct" => {
+                    if (@hasDecl(T, "clone")) {
+                        return value.clone(allocator);
+                    }
+                },
+                else => {},
+            }
+
             return value;
         }
 
@@ -178,6 +222,76 @@ test "struct" {
     const Contact = struct {
         name: []const u8,
         age: usize,
+    };
+
+    var pool = StringPool(Contact).init(std.testing.allocator);
+    defer pool.deinit();
+
+    const key = "Bob";
+    const value: Contact = .{
+        .name = "Bob",
+        .age = 28,
+    };
+    const pos: usize = 0;
+
+    _ = try pool.add(key, value);
+    try testing.expect(pool.get_pos(key).? == pos);
+    try testing.expect(pool.size() == 1);
+    const got = pool.fetch(key);
+    try testing.expect(std.mem.eql(u8, got.?.name, "Bob"));
+}
+
+test "clonable struct (pointer)" {
+    const Contact = struct {
+        name: []const u8,
+        age: usize,
+
+        const Self = @This();
+
+        fn clone(self: *Self, allocator: std.mem.Allocator) !*Self {
+            const copy = try allocator.create(Self);
+            copy.* = .{ .name = try allocator.dupe(u8, self.name), .age = self.age };
+            return copy;
+        }
+
+        fn clear(self: *Self, allocator: std.mem.Allocator) void {
+            allocator.free(self.name);
+            allocator.destroy(self);
+        }
+    };
+
+    var pool = StringPool(*Contact).init(std.testing.allocator);
+    defer pool.deinit();
+
+    const key = "Bob";
+    const value: Contact = .{
+        .name = "Bob",
+        .age = 28,
+    };
+    const pos: usize = 0;
+
+    _ = try pool.add(key, @constCast(&value));
+    try testing.expect(pool.get_pos(key).? == pos);
+    try testing.expect(pool.size() == 1);
+    const got = pool.fetch(key);
+    try testing.expect(std.mem.eql(u8, got.?.name, "Bob"));
+}
+
+test "clonable struct (plain)" {
+    const Contact = struct {
+        name: []const u8,
+        age: usize,
+
+        const Self = @This();
+
+        fn clone(self: Self, allocator: std.mem.Allocator) !Self {
+            const copy:Self = .{ .name = try allocator.dupe(u8, self.name), .age = self.age };
+            return copy;
+        }
+
+        fn clear(self: Self, allocator: std.mem.Allocator) void {
+            allocator.free(self.name);
+        }
     };
 
     var pool = StringPool(Contact).init(std.testing.allocator);
