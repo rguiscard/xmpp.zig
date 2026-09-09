@@ -8,7 +8,6 @@ const testing = std.testing;
 // Use struct and pass *Struct (or Struct) to StringPool(T).
 // Implement clone() and clear() to copy and free fields of struct.
 pub fn StringPool(comptime T: type) type {
-
     return struct {
         pub const StringId = usize; // size of pointer
         const Self = @This();
@@ -32,6 +31,21 @@ pub fn StringPool(comptime T: type) type {
             self.list.deinit(self.allocator);
         }
 
+        fn clearListOfStruct(self: *Self, S: type) bool {
+            if (@hasDecl(S, "clear")) {
+                // check type
+                if (@TypeOf(S.clear) == fn (T, std.mem.Allocator) void) {
+                    for (self.list.items) |item| {
+                        item.clear(self.allocator);
+                    }
+                    return true;
+                } else {
+                    std.debug.print("clear () does not match fn (T, std.mem.Allocator) void\n", .{});
+                }
+            }
+            return false;
+        }
+
         pub fn clear(self: *Self) void {
             if ((T == [:0]const u8) or (T == []const u8)) {
                 for (self.list.items) |item| {
@@ -41,19 +55,11 @@ pub fn StringPool(comptime T: type) type {
                 switch (@typeInfo(T)) {
                     .pointer => |ptr| {
                         if (@typeInfo(ptr.child) == .@"struct") {
-                            if (@hasDecl(ptr.child, "clear")) {
-                                for (self.list.items) |item| {
-                                    item.clear(self.allocator);
-                                }
-                            }
+                            _ = clearListOfStruct(self, ptr.child);
                         }
                     },
                     .@"struct" => {
-                        if (@hasDecl(T, "clear")) {
-                            for (self.list.items) |item| {
-                                item.clear(self.allocator);
-                            }
-                        }
+                        _ = clearListOfStruct(self, T);
                     },
                     else => {},
                 }
@@ -72,6 +78,19 @@ pub fn StringPool(comptime T: type) type {
             return self.hash.contains(key);
         }
 
+        // S is the struct type, T can be the same struct or pointer to struct
+        fn cloneStruct(allocator: std.mem.Allocator, S: type, value: T) !T {
+            if (@hasDecl(S, "clone")) {
+                // check type
+                if (@TypeOf(S.clone) == fn (T, std.mem.Allocator) error{OutOfMemory}!T) {
+                    return try value.clone(allocator);
+                } else {
+                    std.debug.print("clone () does not match fn (T, std.mem.Allocator) error{OutOfMemory}!T\n", .{});
+                }
+            }
+            return value;
+        }
+
         // clone value to keep in array list
         fn clone(allocator: std.mem.Allocator, value: T) !T {
             if (T == [:0]const u8) {
@@ -85,15 +104,11 @@ pub fn StringPool(comptime T: type) type {
             switch (@typeInfo(T)) {
                 .pointer => |ptr| {
                     if (@typeInfo(ptr.child) == .@"struct") {
-                        if (@hasDecl(ptr.child, "clone")) {
-                            return try value.clone(allocator);
-                        }
+                        return try cloneStruct(allocator, ptr.child, value);
                     }
                 },
                 .@"struct" => {
-                    if (@hasDecl(T, "clone")) {
-                        return value.clone(allocator);
-                    }
+                    return try cloneStruct(allocator, T, value);
                 },
                 else => {},
             }
@@ -248,7 +263,7 @@ test "clonable struct (pointer)" {
 
         const Self = @This();
 
-        fn clone(self: *Self, allocator: std.mem.Allocator) !*Self {
+        fn clone(self: *Self, allocator: std.mem.Allocator) error{OutOfMemory}!*Self {
             const copy = try allocator.create(Self);
             copy.* = .{ .name = try allocator.dupe(u8, self.name), .age = self.age };
             return copy;
@@ -284,8 +299,8 @@ test "clonable struct (plain)" {
 
         const Self = @This();
 
-        fn clone(self: Self, allocator: std.mem.Allocator) !Self {
-            const copy:Self = .{ .name = try allocator.dupe(u8, self.name), .age = self.age };
+        fn clone(self: Self, allocator: std.mem.Allocator) error{OutOfMemory}!Self {
+            const copy: Self = .{ .name = try allocator.dupe(u8, self.name), .age = self.age };
             return copy;
         }
 
