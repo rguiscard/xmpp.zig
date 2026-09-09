@@ -117,13 +117,35 @@ pub fn StringPool(comptime T: type) type {
         }
 
         // Make a copy of str. Owner can free his own str.
-        pub fn add(self: *Self, key: []const u8, value: T) !StringId {
+        // If compare is not null, it will use it to find existing value in list(ArrayList)
+        // and assign StringId of hash map to it.
+        // So there will be no duplicated value in list.
+        // It might be useful when multiple keys point to the same value.
+        pub fn add(self: *Self, key: []const u8, value: T, comptime eql: ?fn (lhs: T, rhs: T) bool) !StringId {
+            // Find existing {key,value}
             const entry = self.hash.getEntry(key);
             if (entry) |e| {
                 return e.value_ptr.*;
             }
-            const pos = self.list.items.len;
+
             const kcopy = self.allocator.dupe(u8, key) catch unreachable;
+
+            // Find existing value in list
+            if (eql) |eq| {
+                var found_pos: ?usize = null;
+                for (self.list.items, 0..) |item, index| {
+                    if (eq(item, value)) {
+                        found_pos = index;
+                        break;
+                    }
+                }
+                if (found_pos) |pos| {
+                    _ = try self.hash.put(kcopy, pos);
+                    return pos;
+                }
+            }
+
+            const pos = self.list.items.len;
             const vcopy = clone(self.allocator, value) catch unreachable;
             try self.list.append(self.allocator, vcopy);
             _ = try self.hash.put(kcopy, pos);
@@ -164,13 +186,13 @@ test "basic" {
     const value = "value";
     const pos: usize = 0;
 
-    _ = try pool.add(key, value);
+    _ = try pool.add(key, value, null);
     try testing.expect(pool.get_pos(key).? == pos);
     try testing.expect(std.mem.eql(u8, pool.get_str(pos).?, value));
     try testing.expect(pool.size() == 1);
 }
 
-test "no overwrites" {
+test "many" {
     var pool = StringPool([:0]const u8).init(std.testing.allocator);
     defer pool.deinit();
 
@@ -198,7 +220,7 @@ test "no overwrites" {
         len += 1;
         const kstr = kbuf[0..len];
         // std.debug.warn("ADD [{}]\n", .{str});
-        _ = try pool.add(kstr, vstr);
+        _ = try pool.add(kstr, vstr, null);
     }
 
     const size = pool.size();
@@ -233,6 +255,55 @@ test "no overwrites" {
     }
 }
 
+fn equal(lhs: [:0]const u8, rhs: [:0]const u8) bool {
+    return std.mem.eql(u8, lhs, rhs);
+}
+
+test "many same value" {
+    var pool = StringPool([:0]const u8).init(std.testing.allocator);
+    defer pool.deinit();
+
+    const key = "This is key #";
+    const value = "This is the same value";
+    const klen = key.len;
+    var c: u8 = 0;
+    var kbuf: [100]u8 = undefined;
+    while (c < 10) : (c += 1) {
+        var len: usize = 0;
+        // key
+        @memcpy(kbuf[len .. len + klen], key);
+        len += key.len;
+        kbuf[len] = c + '0';
+        len += 1;
+        const kstr = kbuf[0..len];
+        // std.debug.warn("ADD [{}]\n", .{str});
+        _ = try pool.add(kstr, value, equal);
+    }
+
+    const size = pool.size();
+    try testing.expect(size == 1); // same value, thus, only one in list
+
+    while (c < 10) : (c += 1) {
+        var len: usize = 0;
+        // key
+        @memcpy(kbuf[len .. len + klen], key);
+        len += key.len;
+        kbuf[len] = c + '0';
+        len += 1;
+        kbuf[len] = 0;
+        const kstr = kbuf[0..len :0];
+
+        const got = pool.get_str(c).?;
+
+        // std.debug.warn("GOT [{}] EXPECT [{}]\n", .{ got, str });
+        try testing.expect(std.mem.eql(u8, got, value));
+
+        if (pool.fetch(kstr)) |v| {
+            try testing.expect(std.mem.eql(u8, v, value));
+        }
+    }
+}
+
 test "struct" {
     const Contact = struct {
         name: []const u8,
@@ -249,7 +320,7 @@ test "struct" {
     };
     const pos: usize = 0;
 
-    _ = try pool.add(key, value);
+    _ = try pool.add(key, value, null);
     try testing.expect(pool.get_pos(key).? == pos);
     try testing.expect(pool.size() == 1);
     const got = pool.fetch(key);
@@ -285,7 +356,7 @@ test "clonable struct (pointer)" {
     };
     const pos: usize = 0;
 
-    _ = try pool.add(key, @constCast(&value));
+    _ = try pool.add(key, @constCast(&value), null);
     try testing.expect(pool.get_pos(key).? == pos);
     try testing.expect(pool.size() == 1);
     const got = pool.fetch(key);
@@ -319,7 +390,7 @@ test "clonable struct (plain)" {
     };
     const pos: usize = 0;
 
-    _ = try pool.add(key, value);
+    _ = try pool.add(key, value, null);
     try testing.expect(pool.get_pos(key).? == pos);
     try testing.expect(pool.size() == 1);
     const got = pool.fetch(key);

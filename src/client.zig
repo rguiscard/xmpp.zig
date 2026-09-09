@@ -83,6 +83,10 @@ pub fn init(
     return client;
 }
 
+fn equalString(lhs: [:0]const u8, rhs: [:0]const u8) bool {
+    return std.mem.eql(u8, lhs, rhs);
+}
+
 // Return bare jid or original jid
 // Probably should raise error if it cannot get bare jid ?
 pub fn bareJID(self: *Self, jid: [:0]const u8) [:0]const u8 {
@@ -97,7 +101,7 @@ pub fn bareJID(self: *Self, jid: [:0]const u8) [:0]const u8 {
         if (jid_bare != null) {
             const jid_str = std.mem.span(jid_bare);
             // jids pool will own both jid and jid_bare
-            if (self.jids.add(jid, jid_str)) |pos| {
+            if (self.jids.add(jid, jid_str, equalString)) |pos| {
                 return self.jids.get_str(pos) orelse jid;
             } else |_| {
                 return jid;
