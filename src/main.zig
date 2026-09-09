@@ -34,6 +34,16 @@ fn conn_handler(conn: ?*st.xmpp_conn_t, status: st.xmpp_conn_event_t, error_no: 
     }
 }
 
+// define a handler for tls certificate failure
+fn certfail_handler(cert: ?*const st.xmpp_tlscert_t, errormsg: [*c]const u8) callconv(.c) c_int {
+    _ = cert;
+    _ = errormsg;
+    //    std.debug.print("TLS Verification Failed: {s}\n", .{errormsg});
+
+    //return 0; // 0 = Accept certificate and continue connection
+    return 1; // 1 = Reject certificate and drop connection
+}
+
 pub fn main(init: std.process.Init) !void {
     // This is appropriate for anything that lives as long as the process.
     const arena: std.mem.Allocator = init.arena.allocator();
@@ -90,14 +100,18 @@ pub fn main(init: std.process.Init) !void {
     // create a connection
     conn = st.xmpp_conn_new(ctx);
 
+    // register cert fail handler
+    _ = st.xmpp_conn_set_certfail_handler(conn, certfail_handler);
+
     if (init.environ_map.get("CA_FILE")) |value| {
         // add local mkcert key
+        std.debug.print("\nget CA_FILE environment variable {s}\n", .{value});
         st.xmpp_conn_set_cafile(conn, value.ptr);
     } else {
         // disable TLS for now
         //flags = st.XMPP_CONN_FLAG_DISABLE_TLS;
+        std.debug.print("\nCannot get CA_FILE environment variable\n", .{});
     }
-
 
     // register modules
     if (conn) |_| {

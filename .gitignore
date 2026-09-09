@@ -4,3 +4,4 @@ zig-pkg
 *.db
 *.swp
 *.sh
+*.pem
