@@ -48,11 +48,16 @@ allocator: std.mem.Allocator,
 conn: ?*st.xmpp_conn_t,
 ctx: ?*st.xmpp_ctx_t,
 program: *zz.Program(ui),
+
+// This is used by ui to show rosters, which might be ordered by users.
+// Thus, keep it in ArrayList for easy sorting.
 buddies: std.ArrayList(Buddy) = .empty,
+
 // presences may not sync with buddies, thus, in its own list
 presences: std.ArrayList(Available) = .empty,
 messages: std.ArrayList(Message) = .empty,
 
+// internal mapping between full jid to bare jid
 jids: Pool.StringPool([:0]const u8) = undefined,
 
 to_jid: ?[:0]const u8 = null,
@@ -136,5 +141,9 @@ pub fn print(self: *Self, stanza: ?*st.xmpp_stanza_t) void {
 }
 
 pub fn deinit(self: *Self) void {
+    for (self.buddies.items) |buddy| {
+        self.allocator.free(buddy.name);
+        self.allocator.free(buddy.subscription);
+    }
     self.buddies.deinit(self.allocator);
 }

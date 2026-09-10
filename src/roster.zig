@@ -41,19 +41,26 @@ fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*
         var item = st.xmpp_stanza_get_children(query);
         client.buddies.clearRetainingCapacity();
         while (item != null) {
-            const name = st.xmpp_stanza_get_attribute(item, "name");
             const jid = st.xmpp_stanza_get_attribute(item, "jid");
-            const subscription = st.xmpp_stanza_get_attribute(item, "subscription");
-            var buddy: Buddy = .{ .name = null, .jid = client.allocator.dupeZ(u8, std.mem.span(jid)) catch "", .presense = false, .subscription = client.allocator.dupeZ(u8, std.mem.span(subscription)) catch "" };
-            //            std.debug.print("\t {s} sub={s}\n", .{ std.mem.span(jid), std.mem.span(subscription) });
-            if (name) |n| {
-                buddy.name = client.allocator.dupeZ(u8, std.mem.span(n)) catch "";
+            if (jid != null) {
+                const name = st.xmpp_stanza_get_attribute(item, "name");
+                const subscription = st.xmpp_stanza_get_attribute(item, "subscription");
+                var buddy: Buddy = .{
+                    .name = null,
+                    .jid = client.bareJID(std.mem.span(jid)),
+                    .presense = false,
+                    .subscription = client.allocator.dupeZ(u8, std.mem.span(subscription)) catch unreachable,
+                };
+                // std.debug.print("\t {s} sub={s}\n", .{ std.mem.span(jid), std.mem.span(subscription) });
+                if (name != null) {
+                    buddy.name = client.allocator.dupeZ(u8, std.mem.span(name)) catch unreachable;
+                }
+                client.buddies.append(client.allocator, buddy) catch {};
             }
-            client.buddies.append(client.allocator, buddy) catch {};
             item = st.xmpp_stanza_get_next(item);
         }
         if (client.buddies.items.len > 0) {
-            //            std.debug.print("buddies {d}\n", .{client.buddies.items.len});
+            // std.debug.print("buddies {d}\n", .{client.buddies.items.len});
             client.program.model.setBuddies(client.buddies) catch {};
         }
     }
@@ -65,5 +72,12 @@ fn handle_push(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*a
     const client: *Client = @ptrCast(@alignCast(userdata));
     client.print(stanza);
     _ = conn;
+
+    // must reply
+    const reply = st.xmpp_stanza_reply(stanza);
+    _ = st.xmpp_stanza_set_type(reply, "result");
+    _ = st.xmpp_send(client.conn, reply);
+    _ = st.xmpp_stanza_release(reply);
+
     return 1;
 }
