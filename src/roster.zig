@@ -47,7 +47,7 @@ fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*
                 const subscription = st.xmpp_stanza_get_attribute(item, "subscription");
                 var buddy: Buddy = .{
                     .name = null,
-                    .jid = client.bareJID(std.mem.span(jid)),
+                    .bare_jid = client.bareJID(std.mem.span(jid)),
                     .presense = false,
                     .subscription = client.allocator.dupeZ(u8, std.mem.span(subscription)) catch unreachable,
                 };

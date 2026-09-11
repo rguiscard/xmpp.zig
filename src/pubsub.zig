@@ -27,7 +27,7 @@ pub fn sendMood(client: *Client, state: [:0]const u8, text: [:0]const u8) void {
     const publish = st.xmpp_stanza_new(ctx);
     defer _ = st.xmpp_stanza_release(publish);
     _ = st.xmpp_stanza_set_name(publish, "publish");
-    _ = st.xmpp_stanza_set_attribute( publish, "node", "http://jabber.org/protocol/mood");
+    _ = st.xmpp_stanza_set_attribute(publish, "node", "http://jabber.org/protocol/mood");
     _ = st.xmpp_stanza_add_child(pubsub, publish);
 
     const item = st.xmpp_stanza_new(ctx);
@@ -38,7 +38,7 @@ pub fn sendMood(client: *Client, state: [:0]const u8, text: [:0]const u8) void {
     const mood = st.xmpp_stanza_new(ctx);
     defer _ = st.xmpp_stanza_release(mood);
     _ = st.xmpp_stanza_set_name(mood, "mood");
-    _ = st.xmpp_stanza_set_ns( mood, "http://jabber.org/protocol/mood");
+    _ = st.xmpp_stanza_set_ns(mood, "http://jabber.org/protocol/mood");
     _ = st.xmpp_stanza_add_child(item, mood);
 
     const status = st.xmpp_stanza_new(ctx);
@@ -58,6 +58,8 @@ pub fn sendMood(client: *Client, state: [:0]const u8, text: [:0]const u8) void {
 
     _ = st.xmpp_id_handler_add(client.conn, handle_mood_reply, iq_id, client);
 
+    client.print(iq);
+
     _ = st.xmpp_send(client.conn, iq);
 }
 
@@ -71,7 +73,7 @@ fn handle_mood_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
     if (result_type == null) {
         return 1; // keep waiting
     } else {
-        const result:[:0]const u8 = std.mem.span(result_type);
+        const result: [:0]const u8 = std.mem.span(result_type);
         if (std.mem.eql(u8, "result", result)) {
             std.debug.print("publish mood successfully.\n", .{});
         } else {
@@ -101,7 +103,7 @@ pub fn handle_event_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
             return;
         }
 
-        const mood = st.xmpp_stanza_get_child_by_ns( item, "http://jabber.org/protocol/mood");
+        const mood = st.xmpp_stanza_get_child_by_ns(item, "http://jabber.org/protocol/mood");
 
         if (mood == null) {
             return;
@@ -109,8 +111,8 @@ pub fn handle_event_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
 
         // The first child is the mood value, e.g. <happy/>
         var child = st.xmpp_stanza_get_children(mood);
-        var mood_val:?[:0]const u8 = null;
-        var text:?[:0]const u8 = null;
+        var mood_val: ?[:0]const u8 = null;
+        var text: ?[:0]const u8 = null;
 
         while (child != null) {
             const name = st.xmpp_stanza_get_name(child);

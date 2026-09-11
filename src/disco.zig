@@ -16,7 +16,7 @@ fn handle_disco_info(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
     const client: *Client = @ptrCast(@alignCast(userdata));
     _ = conn;
 
-//    client.print(stanza);
+    //    client.print(stanza);
 
     const disco_id = st.xmpp_uuid_gen(client.ctx);
     defer st.xmpp_free(client.ctx, disco_id);
@@ -42,6 +42,7 @@ fn handle_disco_info(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
     _ = st.xmpp_stanza_add_child(query, identity);
 
     const features = [_][:0]const u8{
+        "http://jabber.org/protocol/caps",
         "http://jabber.org/protocol/disco#info",
         "http://jabber.org/protocol/disco#items",
         "http://jabber.org/protocol/mood",
@@ -59,8 +60,8 @@ fn handle_disco_info(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
 
         _ = st.xmpp_stanza_add_child(query, stz);
     }
- 
-//    client.print(reply);
+
+    //    client.print(reply);
 
     _ = st.xmpp_send(client.conn, reply);
 
@@ -75,7 +76,6 @@ fn handle_disco_items(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userda
 
     return 1;
 }
-
 
 pub fn getVerStr(allocator: std.mem.Allocator) [:0]const u8 {
     const identities = [_]Identity{
@@ -94,5 +94,5 @@ pub fn getVerStr(allocator: std.mem.Allocator) [:0]const u8 {
 
     const ver = VerStr.calculate(allocator, &identities, &features, null, .sha1) catch "";
     return ver;
-//    defer allocator.free(ver);
+    //    defer allocator.free(ver);
 }

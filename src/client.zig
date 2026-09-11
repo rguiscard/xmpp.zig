@@ -17,7 +17,7 @@ const modules = .{
 
 pub const Buddy = struct {
     name: ?[:0]const u8,
-    jid: [:0]const u8,
+    bare_jid: [:0]const u8,
     presense: bool,
     subscription: [:0]const u8,
 };
@@ -114,6 +114,16 @@ pub fn bareJID(self: *Self, jid: [:0]const u8) [:0]const u8 {
         }
     }
     return jid;
+}
+
+// return buddy of a given bare_jid
+pub fn buddyOfJid(self: *Self, bare_jid: [:0]const u8) ?*Buddy {
+    for (self.buddies.items) |*item| {
+        if (std.mem.eql(u8, item.bare_jid, bare_jid)) {
+            return item;
+        }
+    }
+    return null;
 }
 
 pub fn register(self: *Self) void {

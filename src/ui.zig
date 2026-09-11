@@ -29,7 +29,7 @@ pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
     self.list.multi_select = false;
     self.list.height = 50;
     const Item = zz.List(Buddy).Item;
-    try self.list.addItem(Item.init(.{ .name = null, .jid = "dummy@localhost", .presense = false, .subscription = "none" }, "Dummy"));
+    try self.list.addItem(Item.init(.{ .name = null, .bare_jid = "dummy@localhost", .presense = false, .subscription = "none" }, "Dummy"));
 
     self.log = zz.components.RichLog.init(ctx.persistent_allocator, 500);
     self.log.show_timestamps = true;
@@ -57,7 +57,7 @@ pub fn setBuddies(self: *Self, buddies: std.ArrayList(Buddy)) !void {
     self.list.clear();
     const Item = zz.List(Buddy).Item;
     for (buddies.items) |buddy| {
-        try self.list.addItem(Item.init(buddy, buddy.jid));
+        try self.list.addItem(Item.init(buddy, buddy.bare_jid));
     }
 }
 
@@ -74,6 +74,7 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                     .enter => {
                         if (self.input.getValue().len > 0) {
                             const text = ctx.persistent_allocator.dupeZ(u8, self.input.getValue()) catch return .none;
+                            // should free text ?
                             if (client.to_jid) |jid| {
                                 Chat.sendMessage(client, jid, text) catch {};
                             }
@@ -117,8 +118,16 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                         },
                         'v' => {
                             if (self.selected_panel == 0) {
-                                self.buddy_modal.title = client.to_jid orelse "Buddy";
-                                self.buddy_modal.show();
+                                if (client.to_jid) |jid| {
+                                    self.buddy_modal.title = jid;
+                                    // may move somewhere else later
+                                    const buddy = client.buddyOfJid(jid);
+                                    if (buddy) |b| {
+                                        const body = std.fmt.allocPrintSentinel(client.allocator, "Subscription: {s}\n", .{b.subscription}, 0);
+                                        self.buddy_modal.body = body catch "unknown";
+                                    }
+                                    self.buddy_modal.show();
+                                }
                             }
                         },
                         else => {
@@ -135,13 +144,13 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                             if (self.list.cursor < visible.len) {
                                 const item_idx = visible[self.list.cursor];
                                 const buddy = self.list.items.items[item_idx].value;
-                                client.to_jid = client.bareJID(buddy.jid);
+                                client.to_jid = client.bareJID(buddy.bare_jid);
                                 if (client.to_jid) |jid| {
                                     if (std.fmt.allocPrintSentinel(ctx.persistent_allocator, "{s} > ", .{jid}, 0)) |prompt| {
                                         self.input.setPrompt(prompt);
                                         // Let's populate logs
                                         self.log.clear();
-                                        for(client.messages.items) |m| {
+                                        for (client.messages.items) |m| {
                                             if (std.mem.eql(u8, m.from, jid) or std.mem.eql(u8, m.to, jid)) {
                                                 self.log.appendFmt(ctx.io, .info, "{s}: {s}", .{ m.from, m.body orelse "" }) catch {};
                                             }
