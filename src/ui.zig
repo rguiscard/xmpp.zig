@@ -15,6 +15,8 @@ input_mode: bool,
 input: zz.TextInput,
 
 buddy_modal: zz.Modal,
+debug_modal: zz.Modal,
+debug_log: zz.components.RichLog,
 
 const Self = @This();
 
@@ -40,6 +42,37 @@ pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
     self.input.setPrompt("> ");
 
     self.buddy_modal = zz.Modal.info("Buddy", "Details");
+
+    self.debug_modal = zz.Modal.init();
+    self.debug_log = zz.components.RichLog.init(ctx.persistent_allocator, 500);
+    self.debug_log.setSize(40, 10);
+    self.debug_log.show_timestamps = true;
+
+    try self.debug_log.append(ctx.io, .info, "RichLog example started");
+    try self.debug_log.append(ctx.io, .debug, "buffer capacity = 500 entries");
+    try self.debug_log.append(ctx.io, .info, "follow-mode enabled — new entries scroll into view");
+    try self.debug_log.append(ctx.io, .warn, "press '/' to filter, 'l' to cycle min level");
+    try self.debug_log.append(ctx.io, .info, "01");
+    try self.debug_log.append(ctx.io, .info, "02");
+    try self.debug_log.append(ctx.io, .info, "03");
+    try self.debug_log.append(ctx.io, .info, "04");
+    try self.debug_log.append(ctx.io, .info, "05");
+    try self.debug_log.append(ctx.io, .info, "06");
+    try self.debug_log.append(ctx.io, .info, "07");
+    try self.debug_log.append(ctx.io, .info, "08");
+    try self.debug_log.append(ctx.io, .info, "09");
+    try self.debug_log.append(ctx.io, .info, "10");
+    try self.debug_log.append(ctx.io, .info, "11");
+    try self.debug_log.append(ctx.io, .info, "12");
+    try self.debug_log.append(ctx.io, .info, "13");
+    try self.debug_log.append(ctx.io, .info, "14");
+    try self.debug_log.append(ctx.io, .info, "15");
+    try self.debug_log.append(ctx.io, .info, "16");
+    try self.debug_log.append(ctx.io, .info, "17");
+    try self.debug_log.append(ctx.io, .info, "18");
+    try self.debug_log.append(ctx.io, .info, "19");
+    try self.debug_log.append(ctx.io, .info, "20");
+
     return .none;
 }
 
@@ -93,8 +126,40 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                 self.buddy_modal.handleKey(k);
                 if (self.buddy_modal.getResult()) |res| {
                     switch (res) {
-                        .button_pressed => {}, // button at idx was pressed
+                        .button_pressed => {
+                        }, // button at idx was pressed
                         .dismissed => {}, // user pressed Escape
+                    }
+                }
+                return .none;
+            } else if (self.debug_modal.isVisible()) {
+                switch(k.key) {
+                    .char => |c| switch (c) {
+//                        'l' => {
+//                            const next: zz.components.RichLogLevel = switch (self.debug_log.min_level) {
+//                                .trace => .debug,
+//                                .debug => .info,
+//                                .info => .warn,
+//                                .warn => .err,
+//                                .err => .trace,
+//                            };
+//                            self.debug_log.setMinLevel(next);
+//                        },
+                        else => self.debug_log.handleKey(k) catch {},
+                    },
+                    .up, .down, .page_up, .page_down => {
+                        self.debug_log.handleKey(k) catch {};
+                    },
+                    else => {
+                        self.debug_modal.handleKey(k);
+                        if (self.debug_modal.getResult()) |res| {
+                            switch (res) {
+                                .button_pressed => |idx| { // button at idx was pressed
+                                    std.debug.print("\ndebug_modal {d}\n", .{idx});
+                                },
+                                .dismissed => {}, // user pressed Escape
+                            }
+                        }
                     }
                 }
                 return .none;
@@ -129,6 +194,27 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                                     self.buddy_modal.show();
                                 }
                             }
+                        },
+                        'D' => { // debug modal
+                            self.debug_modal.title = "Custom Dialog";
+                            self.debug_modal.body = "This is a fully customized modal.\nWith multiple lines of content.\nAnd custom buttons below.";
+                            self.debug_modal.footer = "Use Tab/arrows to navigate, Enter to select";
+                            self.debug_modal.width = .{ .fixed = 70 };
+                            self.debug_modal.border_chars = zz.Border.double;
+                            self.debug_modal.border_fg = zz.Color.magenta;
+                            self.debug_modal.title_style = blk: {
+                                var s = zz.Style{};
+                                s = s.bold(true).fg(zz.Color.magenta).inline_style(true);
+                                break :blk s;
+                            };
+                            self.debug_modal.content_bg = zz.Color.gray(2);
+                            self.debug_modal.backdrop = .{};
+                            self.debug_modal.addButton("OK", .{ .char = 'o' });
+                            self.debug_modal.show();
+
+                            var debug_log_mut = @constCast(&self.debug_log);
+                            const debug_log_view = debug_log_mut.view(ctx.allocator) catch "";
+                            self.debug_modal.body = debug_log_view;
                         },
                         else => {
                             if (self.selected_panel == 0) {
@@ -192,6 +278,14 @@ pub fn view(self: *const Self, ctx: *const zz.Context) ![]const u8 {
 
     if (self.buddy_modal.isVisible()) {
         return self.buddy_modal.viewWithBackdrop(alloc, ctx.width, ctx.height);
+    }
+
+    if (self.debug_modal.isVisible()) {
+        var debug_log_mut = @constCast(&self.debug_log);
+        const debug_log_view = debug_log_mut.view(ctx.allocator) catch "";
+        var var_self = @constCast(self);
+        var_self.debug_modal.body = debug_log_view;
+        return self.debug_modal.viewWithBackdrop(alloc, ctx.width, ctx.height);
     }
 
     const w: u16 = @intCast(@min(ctx.width, std.math.maxInt(u16)));
