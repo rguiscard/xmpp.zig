@@ -48,30 +48,7 @@ pub fn init(self: *Self, ctx: *zz.Context) !zz.Cmd(Msg) {
     self.debug_log.setSize(40, 10);
     self.debug_log.show_timestamps = true;
 
-    try self.debug_log.append(ctx.io, .info, "RichLog example started");
-    try self.debug_log.append(ctx.io, .debug, "buffer capacity = 500 entries");
-    try self.debug_log.append(ctx.io, .info, "follow-mode enabled — new entries scroll into view");
-    try self.debug_log.append(ctx.io, .warn, "press '/' to filter, 'l' to cycle min level");
-    try self.debug_log.append(ctx.io, .info, "01");
-    try self.debug_log.append(ctx.io, .info, "02");
-    try self.debug_log.append(ctx.io, .info, "03");
-    try self.debug_log.append(ctx.io, .info, "04");
-    try self.debug_log.append(ctx.io, .info, "05");
-    try self.debug_log.append(ctx.io, .info, "06");
-    try self.debug_log.append(ctx.io, .info, "07");
-    try self.debug_log.append(ctx.io, .info, "08");
-    try self.debug_log.append(ctx.io, .info, "09");
-    try self.debug_log.append(ctx.io, .info, "10");
-    try self.debug_log.append(ctx.io, .info, "11");
-    try self.debug_log.append(ctx.io, .info, "12");
-    try self.debug_log.append(ctx.io, .info, "13");
-    try self.debug_log.append(ctx.io, .info, "14");
-    try self.debug_log.append(ctx.io, .info, "15");
-    try self.debug_log.append(ctx.io, .info, "16");
-    try self.debug_log.append(ctx.io, .info, "17");
-    try self.debug_log.append(ctx.io, .info, "18");
-    try self.debug_log.append(ctx.io, .info, "19");
-    try self.debug_log.append(ctx.io, .info, "20");
+    try self.debug_log.append(ctx.io, .info, "Log begins.");
 
     return .none;
 }
@@ -210,11 +187,13 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                             self.debug_modal.content_bg = zz.Color.gray(2);
                             self.debug_modal.backdrop = .{};
                             self.debug_modal.addButton("OK", .{ .char = 'o' });
-                            self.debug_modal.show();
 
                             var debug_log_mut = @constCast(&self.debug_log);
                             const debug_log_view = debug_log_mut.view(ctx.allocator) catch "";
                             self.debug_modal.body = debug_log_view;
+
+                            self.debug_modal.show();
+
                         },
                         else => {
                             if (self.selected_panel == 0) {

@@ -126,12 +126,40 @@ pub fn buddyOfJid(self: *Self, bare_jid: [:0]const u8) ?*Buddy {
     return null;
 }
 
+fn debug_handler(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
+     const client: *Self = @ptrCast(@alignCast(userdata));
+     _ = conn;
+     client.debug(stanza);
+
+     return 1;
+}
+
 pub fn register(self: *Self) void {
     inline for (modules) |m| {
         m.register(self);
     }
+    // capture all iq for debug
+    st.xmpp_handler_add(self.conn, debug_handler, null, "iq", null, self);
 }
 
+// This print to debug modal (rich log)
+pub fn debug(self: *Self, stanza: ?*st.xmpp_stanza_t) void {
+    var text: [*c]u8 = null;
+    var text_len: usize = 0;
+
+    const rc = st.xmpp_stanza_to_text(stanza, &text, &text_len);
+    if (rc != 0) {
+        self.program.model.debug_log.append(self.program.context.io, .info, "xmpp_stanza_to_text failed") catch {};
+    }
+    if (text != 0) {
+        self.program.model.debug_log.append(self.program.context.io, .info, text[0..text_len]) catch {};
+//        std.debug.print("\nstanza: {s}\n", .{text[0..text_len]});
+        st.xmpp_free(st.xmpp_stanza_get_context(stanza), text);
+        //st.xmpp_free(ctx, text);
+    }
+}
+
+// This print to standard output
 pub fn print(self: *Self, stanza: ?*st.xmpp_stanza_t) void {
     _ = self;
     //    const ctx = self.ctx;
