@@ -39,14 +39,16 @@ fn handle_message(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: 
     const client: *Client = @ptrCast(@alignCast(userdata));
     _ = conn;
 
-    client.print(stanza);
+//    client.print(stanza);
 
     // Let's see whether it is a pubsub#event
     const event = st.xmpp_stanza_get_child_by_ns(stanza, "http://jabber.org/protocol/pubsub#event");
 
     if (event != null) {
+        client.debug(null, "pubsub message");
         PubSub.handle_event_message(client, event);
     } else {
+        client.debug(null, "regular message");
         handle_chat_message(client, stanza);
     }
     return 1;

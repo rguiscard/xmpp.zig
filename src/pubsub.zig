@@ -58,7 +58,7 @@ pub fn sendMood(client: *Client, state: [:0]const u8, text: [:0]const u8) void {
 
     _ = st.xmpp_id_handler_add(client.conn, handle_mood_reply, iq_id, client);
 
-    client.print(iq);
+//    client.print(iq);
 
     _ = st.xmpp_send(client.conn, iq);
 
@@ -87,7 +87,7 @@ fn handle_mood_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
 pub fn handle_event_message(client: *Client, stanza: ?*st.xmpp_stanza_t) void {
     const program = client.program;
 
-    client.print(stanza);
+//    client.print(stanza);
 
     const items = st.xmpp_stanza_get_child_by_name(stanza, "items");
 
