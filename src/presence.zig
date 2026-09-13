@@ -42,9 +42,11 @@ pub fn sendAvailable(client: *Client, show: ?[:0]const u8, status: ?[:0]const u8
 
     _ = st.xmpp_stanza_add_child(presence, stanza);
 
-    client.print(presence);
+    //  client.print(presence);
 
     st.xmpp_send(conn, presence);
+
+    client.debug(null, "send available with ver_str");
 }
 
 fn handle_presence(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {

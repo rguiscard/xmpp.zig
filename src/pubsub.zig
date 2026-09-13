@@ -61,12 +61,12 @@ pub fn sendMood(client: *Client, state: [:0]const u8, text: [:0]const u8) void {
     client.print(iq);
 
     _ = st.xmpp_send(client.conn, iq);
+
+    client.debug(null, "send mood");
 }
 
 fn handle_mood_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
-    //const client: *Client = @ptrCast(@alignCast(userdata));
-    //    client.print(stanza);
-    _ = userdata;
+    const client: *Client = @ptrCast(@alignCast(userdata));
     _ = conn;
 
     const result_type = st.xmpp_stanza_get_type(stanza);
@@ -75,9 +75,9 @@ fn handle_mood_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
     } else {
         const result: [:0]const u8 = std.mem.span(result_type);
         if (std.mem.eql(u8, "result", result)) {
-            std.debug.print("publish mood successfully.\n", .{});
+            client.debug(null, "publish mood successfully.\n");
         } else {
-            std.debug.print("publish mood failed.\n", .{});
+            client.debug(null, "publish mood failed.\n");
         }
         return 0;
     }

@@ -140,8 +140,8 @@ pub fn main(init: std.process.Init) !void {
 
                     context.timeout = 100;
                     while (program.isRunning() and (context.loop_status == st.XMPP_LOOP_RUNNING)) {
-                        try program.tick();
                         st.xmpp_run_once(ctx, context.timeout);
+                        try program.tick();
                     }
                     context.loop_status = st.XMPP_LOOP_NOTSTARTED;
                 }

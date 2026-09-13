@@ -64,6 +64,7 @@ fn handle_disco_info(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
     //    client.print(reply);
 
     _ = st.xmpp_send(client.conn, reply);
+    client.debug(null, "reply disco info");
 
     return 1;
 }
@@ -71,8 +72,9 @@ fn handle_disco_info(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdat
 fn handle_disco_items(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
     const client: *Client = @ptrCast(@alignCast(userdata));
     _ = conn;
-    _ = client;
     _ = stanza;
+
+    client.debug(null, "handle disco items (do nothing now)");
 
     return 1;
 }

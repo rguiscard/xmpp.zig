@@ -26,6 +26,8 @@ pub fn request(client: *Client) !void {
     _ = st.xmpp_stanza_add_child(iq, query);
     st.xmpp_id_handler_add(conn, handle_reply, roster_id, client);
     st.xmpp_send(conn, iq);
+
+    client.debug(null, "request roster");
 }
 
 fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
@@ -78,6 +80,8 @@ fn handle_push(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*a
     _ = st.xmpp_stanza_set_type(reply, "result");
     _ = st.xmpp_send(client.conn, reply);
     _ = st.xmpp_stanza_release(reply);
+
+    client.debug(null, "reply roster push");
 
     return 1;
 }

@@ -129,7 +129,7 @@ pub fn buddyOfJid(self: *Self, bare_jid: [:0]const u8) ?*Buddy {
 fn debug_handler(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*anyopaque) callconv(.c) c_int {
      const client: *Self = @ptrCast(@alignCast(userdata));
      _ = conn;
-     client.debug(stanza);
+     client.debug(stanza, null);
 
      return 1;
 }
@@ -143,19 +143,24 @@ pub fn register(self: *Self) void {
 }
 
 // This print to debug modal (rich log)
-pub fn debug(self: *Self, stanza: ?*st.xmpp_stanza_t) void {
-    var text: [*c]u8 = null;
-    var text_len: usize = 0;
+pub fn debug(self: *Self, stanza: ?*st.xmpp_stanza_t, log: ?[:0]const u8) void {
+    if (stanza != null) {
+        var text: [*c]u8 = null;
+        var text_len: usize = 0;
 
-    const rc = st.xmpp_stanza_to_text(stanza, &text, &text_len);
-    if (rc != 0) {
-        self.program.model.debug_log.append(self.program.context.io, .info, "xmpp_stanza_to_text failed") catch {};
+        const rc = st.xmpp_stanza_to_text(stanza, &text, &text_len);
+        if (rc != 0) {
+            self.program.model.debug_log.append(self.program.context.io, .info, "xmpp_stanza_to_text failed") catch {};
+        }
+        if (text != 0) {
+            self.program.model.debug_log.append(self.program.context.io, .info, text[0..text_len]) catch {};
+            st.xmpp_free(st.xmpp_stanza_get_context(stanza), text);
+            //st.xmpp_free(ctx, text);
+        }
     }
-    if (text != 0) {
-        self.program.model.debug_log.append(self.program.context.io, .info, text[0..text_len]) catch {};
-//        std.debug.print("\nstanza: {s}\n", .{text[0..text_len]});
-        st.xmpp_free(st.xmpp_stanza_get_context(stanza), text);
-        //st.xmpp_free(ctx, text);
+
+    if (log) |text| {
+        self.program.model.debug_log.append(self.program.context.io, .info, text) catch {};
     }
 }
 
