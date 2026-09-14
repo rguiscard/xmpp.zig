@@ -71,7 +71,7 @@ pub fn setBuddies(self: *Self, buddies: std.ArrayList(Buddy)) !void {
     }
 }
 
-pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
+pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) !zz.Cmd(Msg) {
     const client = self.client;
     switch (msg) {
         .key => |k| {
@@ -79,16 +79,16 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                 switch (k.key) {
                     .escape => {
                         self.input_mode = false;
-                        self.input.setValue("") catch {};
+                        try self.input.setValue("");
                     },
                     .enter => {
                         if (self.input.getValue().len > 0) {
                             const text = ctx.persistent_allocator.dupeZ(u8, self.input.getValue()) catch return .none;
                             // should free text ?
                             if (client.to_jid) |jid| {
-                                Chat.sendMessage(client, jid, text) catch {};
+                                try Chat.sendMessage(client, jid, text);
                             }
-                            self.input.setValue("") catch {};
+                            try self.input.setValue("");
                         }
                         self.input_mode = false;
                     },
@@ -103,29 +103,28 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                 self.buddy_modal.handleKey(k);
                 if (self.buddy_modal.getResult()) |res| {
                     switch (res) {
-                        .button_pressed => {
-                        }, // button at idx was pressed
+                        .button_pressed => {}, // button at idx was pressed
                         .dismissed => {}, // user pressed Escape
                     }
                 }
                 return .none;
             } else if (self.debug_modal.isVisible()) {
-                switch(k.key) {
+                switch (k.key) {
                     .char => |c| switch (c) {
-//                        'l' => {
-//                            const next: zz.components.RichLogLevel = switch (self.debug_log.min_level) {
-//                                .trace => .debug,
-//                                .debug => .info,
-//                                .info => .warn,
-//                                .warn => .err,
-//                                .err => .trace,
-//                            };
-//                            self.debug_log.setMinLevel(next);
-//                        },
-                        else => self.debug_log.handleKey(k) catch {},
+                        //                        'l' => {
+                        //                            const next: zz.components.RichLogLevel = switch (self.debug_log.min_level) {
+                        //                                .trace => .debug,
+                        //                                .debug => .info,
+                        //                                .info => .warn,
+                        //                                .warn => .err,
+                        //                                .err => .trace,
+                        //                            };
+                        //                            self.debug_log.setMinLevel(next);
+                        //                        },
+                        else => try self.debug_log.handleKey(k),
                     },
                     .up, .down, .page_up, .page_down => {
-                        self.debug_log.handleKey(k) catch {};
+                        try self.debug_log.handleKey(k);
                     },
                     else => {
                         self.debug_modal.handleKey(k);
@@ -137,7 +136,7 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                                 .dismissed => {}, // user pressed Escape
                             }
                         }
-                    }
+                    },
                 }
                 return .none;
             } else {
@@ -193,13 +192,12 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                             self.debug_modal.body = debug_log_view;
 
                             self.debug_modal.show();
-
                         },
                         else => {
                             if (self.selected_panel == 0) {
                                 self.list.handleKey(k);
                             } else if (self.selected_panel == 1) {
-                                self.log.handleKey(k) catch {};
+                                try self.log.handleKey(k);
                             }
                         },
                     },
@@ -217,7 +215,7 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                                         self.log.clear();
                                         for (client.messages.items) |m| {
                                             if (std.mem.eql(u8, m.from, jid) or std.mem.eql(u8, m.to, jid)) {
-                                                self.log.appendFmt(ctx.io, .info, "{s}: {s}", .{ m.from, m.body orelse "" }) catch {};
+                                                try self.log.appendFmt(ctx.io, .info, "{s}: {s}", .{ m.from, m.body orelse "" });
                                             }
                                         }
                                     } else |_| {}
@@ -242,7 +240,7 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
                         if (self.selected_panel == 0) {
                             self.list.handleKey(k);
                         } else if (self.selected_panel == 1) {
-                            self.log.handleKey(k) catch {};
+                            try self.log.handleKey(k);
                         }
                     },
                 }
