@@ -1,4 +1,5 @@
 const std = @import("std");
+const Translator = @import("translate_c").Translator;
 
 // Although this function looks imperative, it does not perform the build
 // directly and instead it mutates the build graph (`b`) that will be then
@@ -21,14 +22,35 @@ pub fn build(b: *std.Build) void {
     // target and optimize options) will be listed when running `zig build --help`
     // in this directory.
 
-    const translated_c = b.addTranslateC(.{
-        .root_source_file = b.path("src/headers.h"),
+    const translate_c = b.dependency("translate_c", .{});
+
+    const translator: Translator = .init(translate_c, .{
+        .c_source_file = b.path("src/headers.h"),
         .target = target,
         .optimize = optimize,
+        .link_system_libs = &.{
+            .{
+                .name = "strophe",
+                .options = .{},
+            },
+        },
+    // additional options now available that go here:
+    // https://codeberg.org/ziglang/translate-c#options
     });
-    translated_c.linkSystemLibrary("strophe", .{});
+    translator.addIncludePath(b.graph.cwdRelativePath("/opt/homebrew/include"));
+    const translator_mod = translator.mod;
+    translator_mod.addLibraryPath(b.graph.cwdRelativePath("/opt/homebrew/lib"));
 
-    const translated_mod = translated_c.createModule();
+//    translator.linkSystemLibrary("strophe", .{});
+
+//    const translated_c = b.addTranslateC(.{
+//        .root_source_file = b.path("src/headers.h"),
+//        .target = target,
+//        .optimize = optimize,
+//    });
+//    translated_c.linkSystemLibrary("strophe", .{});
+
+//    const translated_mod = translated_c.createModule();
 
     const zigzag = b.dependency("zigzag", .{
         .target = target,
@@ -54,7 +76,7 @@ pub fn build(b: *std.Build) void {
         // which requires us to specify a target.
         .target = target,
     });
-    mod.addImport("strophe", translated_mod);
+    mod.addImport("strophe", translator_mod);
     mod.addImport("zigzag", zigzag.module("zigzag"));
 
     // Here we define an executable. An executable needs to have a root module
@@ -127,9 +149,7 @@ pub fn build(b: *std.Build) void {
 
     // This allows the user to pass arguments to the application in the build
     // command itself, like this: `zig build run -- arg1 arg2 etc`
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
+    run_cmd.addPassthruArgs();
 
     // Creates an executable that will run `test` blocks from the provided module.
     // Here `mod` needs to define a target, which is why earlier we made sure to

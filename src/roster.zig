@@ -51,11 +51,11 @@ fn handle_reply(conn: ?*st.xmpp_conn_t, stanza: ?*st.xmpp_stanza_t, userdata: ?*
                     .name = null,
                     .bare_jid = client.bareJID(std.mem.span(jid)),
                     .presense = false,
-                    .subscription = client.allocator.dupeZ(u8, std.mem.span(subscription)) catch unreachable,
+                    .subscription = client.allocator.dupeSentinel(u8, std.mem.span(subscription), 0) catch unreachable,
                 };
                 // std.debug.print("\t {s} sub={s}\n", .{ std.mem.span(jid), std.mem.span(subscription) });
                 if (name != null) {
-                    buddy.name = client.allocator.dupeZ(u8, std.mem.span(name)) catch unreachable;
+                    buddy.name = client.allocator.dupeSentinel(u8, std.mem.span(name), 0) catch unreachable;
                 }
                 client.buddies.append(client.allocator, buddy) catch {};
             }

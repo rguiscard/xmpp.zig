@@ -83,7 +83,7 @@ pub fn update(self: *Self, msg: Msg, ctx: *zz.Context) !zz.Cmd(Msg) {
                     },
                     .enter => {
                         if (self.input.getValue().len > 0) {
-                            const text = ctx.persistent_allocator.dupeZ(u8, self.input.getValue()) catch return .none;
+                            const text = ctx.persistent_allocator.dupeSentinel(u8, self.input.getValue(), 0) catch return .none;
                             // should free text ?
                             if (client.to_jid) |jid| {
                                 try Chat.sendMessage(client, jid, text);

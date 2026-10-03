@@ -14,7 +14,7 @@ pub fn stanzaGetFrom(stanza: ?*st.xmpp_stanza_t) ?[:0]const u8 {
 
 pub fn stanzaGetFromAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t) !?[:0]const u8 {
     if (stanzaGetFrom(stanza)) |stz| {
-        return try allocator.dupeZ(u8, stz);
+        return try allocator.dupeSentinel(u8, stz, 0);
     }
     return null;
 }
@@ -31,7 +31,7 @@ pub fn stanzaGetTo(stanza: ?*st.xmpp_stanza_t) ?[:0]const u8 {
 
 pub fn stanzaGetToAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp_stanza_t) !?[:0]const u8 {
     if (stanzaGetTo(stanza)) |stz| {
-        return try allocator.dupeZ(u8, stz);
+        return try allocator.dupeSentinel(u8, stz, 0);
     }
     return null;
 }
@@ -60,7 +60,7 @@ pub fn stanzaGetChildByNameAlloc(allocator: std.mem.Allocator, stanza: ?*st.xmpp
         const ctext = st.xmpp_stanza_get_text(cstr);
         if (ctext != null) {
             defer st.xmpp_free(ctx, ctext);
-            return try allocator.dupeZ(u8, std.mem.span(ctext));
+            return try allocator.dupeSentinel(u8, std.mem.span(ctext), 0);
         }
     }
     return null;

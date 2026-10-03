@@ -94,7 +94,7 @@ pub fn StringPool(comptime T: type) type {
         // clone value to keep in array list
         fn clone(allocator: std.mem.Allocator, value: T) !T {
             if (T == [:0]const u8) {
-                return try allocator.dupeZ(u8, value);
+                return try allocator.dupeSentinel(u8, value, 0);
             }
 
             if (T == []const u8) {
