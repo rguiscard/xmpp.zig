@@ -33,8 +33,8 @@
     // internet connectivity.
     .dependencies = .{
         .zigzag = .{
-            .url = "git+https://github.com/meszmate/zigzag?ref=main#0a09aa484719a5257cb87dd0f09b4f7e81adcd5b",
-            .hash = "zigzag-0.1.6-YXwYS7UBEwAOOl0w7ju033G2mqu034VzFPp3eMoQJukY",
+            .url = "git+https://github.com/meszmate/zigzag?ref=main#15db0f7e12dd6840307c3062c9c5c4fa851c79d0",
+            .hash = "zigzag-0.1.7-YXwYS8sjEwDBfyibZxgq4YMU-GRXD_qgtePvgGWZF3-g",
         },
         .translate_c = .{
             .url = "git+https://codeberg.org/ziglang/translate-c#02ff0c523fb92a38939b04d0145c4a9602a74d56",

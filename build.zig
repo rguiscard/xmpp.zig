@@ -41,17 +41,6 @@ pub fn build(b: *std.Build) void {
     const translator_mod = translator.mod;
     translator_mod.addLibraryPath(b.graph.cwdRelativePath("/opt/homebrew/lib"));
 
-//    translator.linkSystemLibrary("strophe", .{});
-
-//    const translated_c = b.addTranslateC(.{
-//        .root_source_file = b.path("src/headers.h"),
-//        .target = target,
-//        .optimize = optimize,
-//    });
-//    translated_c.linkSystemLibrary("strophe", .{});
-
-//    const translated_mod = translated_c.createModule();
-
     const zigzag = b.dependency("zigzag", .{
         .target = target,
         .optimize = optimize,
